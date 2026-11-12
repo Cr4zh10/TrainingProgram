@@ -180,6 +180,8 @@
   const PULL = ['lats', 'upperBack', 'rearDelts', 'biceps'];
   const FULL = [...UP, ...LOW];
   const SPLITS = {
+    2: { name: 'Full body ×2', why: 'Every muscle 2× per week in two longer sessions.',
+      days: [['Full body A', 'Mon', FULL], ['Full body B', 'Thu', FULL]] },
     3: { name: 'Full body ×3', why: 'Every muscle 3× per week — ideal when you can only train three days.',
       days: [['Full body A', 'Mon', FULL], ['Full body B', 'Wed', FULL], ['Full body C', 'Fri', FULL]] },
     4: { name: 'Upper / Lower', why: 'Every muscle 2× per week with short, focused sessions.',
@@ -189,6 +191,38 @@
     6: { name: 'Push / Pull / Legs ×2', why: 'Every muscle 2× per week; highest volume capacity for advanced lifters.',
       days: [['Push A', 'Mon', PUSH], ['Pull A', 'Tue', [...PULL, 'abs']], ['Legs A', 'Wed', LOW], ['Push B', 'Thu', PUSH], ['Pull B', 'Fri', [...PULL, 'abs']], ['Legs B', 'Sat', LOW]] },
   };
+
+  const WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const DEFAULT_DAYS = { 2: ['Mon', 'Thu'], 3: ['Mon', 'Wed', 'Fri'], 4: ['Mon', 'Tue', 'Thu', 'Fri'], 5: ['Mon', 'Tue', 'Wed', 'Fri', 'Sat'], 6: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
+
+  // ---------------------------------------------------------------- Cardio
+  // Treadmill uses the ACSM walking/running equations (speed + incline); other machines use Compendium METs.
+  const CARDIO_TYPES = {
+    treadmill: { n: 'Treadmill', tread: true },
+    bike: { n: 'Stationary bike', met: [4.0, 6.8, 8.8] },
+    elliptical: { n: 'Elliptical', met: [4.6, 5.5, 7.0] },
+    stair: { n: 'Stair climber', met: [6.5, 8.8, 10.5] },
+    rower: { n: 'Rowing machine', met: [4.8, 7.0, 8.5] },
+  };
+  const LEVELS = ['Easy', 'Moderate', 'Hard'];
+  const KMH_PER_MPH = 1.609344;
+
+  function cardioInfo(c, kg) {
+    const t = CARDIO_TYPES[c.type] || CARDIO_TYPES.treadmill;
+    let met, name;
+    if (t.tread) {
+      const S = c.speedKmh * 1000 / 60, G = (c.incline || 0) / 100; // metres per minute, grade
+      const run = c.speedKmh > 6.5;
+      const vo2 = run ? 0.2 * S + 0.9 * S * G + 3.5 : 0.1 * S + 1.8 * S * G + 3.5;
+      met = vo2 / 3.5;
+      name = run ? 'Treadmill run' : (c.incline >= 3 ? 'Incline walk' : 'Treadmill walk');
+    } else {
+      met = t.met[c.level ?? 1];
+      name = `${t.n} (${LEVELS[c.level ?? 1].toLowerCase()})`;
+    }
+    const kcal = Math.max(0, (met - 1) * 3.5 * kg / 200 * c.min); // calories above resting
+    return { met, kcal, name, vigorous: met >= 6 };
+  }
 
   // ---------------------------------------------------------------- DOM helpers
   const $ = id => document.getElementById(id);
@@ -207,6 +241,47 @@
     $('weak-list').innerHTML = WEAK_OPTIONS.map(([id, label]) =>
       `<label class="chip"><input type="checkbox" id="weak-${id}" value="${id}"><span>${esc(label)}</span></label>`).join('');
   }
+  function buildDayChips() {
+    $('day-list').innerHTML = WEEK.map(d =>
+      `<label class="chip day"><input type="checkbox" id="day-${d}" value="${d}"${DEFAULT_DAYS[4].includes(d) ? ' checked' : ''}><span>${d}</span></label>`).join('');
+  }
+  function setTrainDays(list) {
+    document.querySelectorAll('#day-list input').forEach(i => { i.checked = list.includes(i.value); });
+  }
+
+  function speedOut(kmh, units) { return units === 'imperial' ? (kmh / KMH_PER_MPH).toFixed(1) : kmh.toFixed(1); }
+  function renderCardioRows(list, units) {
+    const opt = (v, label, sel) => `<option value="${v}"${v === sel ? ' selected' : ''}>${esc(label)}</option>`;
+    $('cardio-list').innerHTML = list.map((c, i) => {
+      const t = CARDIO_TYPES[c.type] || CARDIO_TYPES.treadmill;
+      const extra = t.tread
+        ? `<div class="field"><label for="c-speed-${i}">Speed (${units === 'imperial' ? 'mph' : 'km/h'})</label><input id="c-speed-${i}" data-k="speed" type="number" min="1" max="25" step="0.1" value="${speedOut(c.speedKmh, units)}"></div>
+           <div class="field"><label for="c-inc-${i}">Incline (%)</label><input id="c-inc-${i}" data-k="incline" type="number" min="0" max="15" step="0.5" value="${c.incline}"></div>`
+        : `<div class="field span2c"><label for="c-lvl-${i}">Intensity</label><select id="c-lvl-${i}" data-k="level">${LEVELS.map((l, k) => opt(String(k), l, String(c.level ?? 1))).join('')}</select></div>`;
+      return `<div class="cardio-row" data-i="${i}">
+        <div class="field"><label for="c-day-${i}">Day</label><select id="c-day-${i}" data-k="day">${WEEK.map(d => opt(d, d, c.day)).join('')}</select></div>
+        <div class="field span2c"><label for="c-type-${i}">Machine</label><select id="c-type-${i}" data-k="type">${Object.entries(CARDIO_TYPES).map(([k, v]) => opt(k, v.n, c.type)).join('')}</select></div>
+        <div class="field"><label for="c-min-${i}">Minutes</label><input id="c-min-${i}" data-k="min" type="number" min="5" max="180" step="5" value="${c.min}"></div>
+        ${extra}
+        <div class="cardio-foot"><span class="c-est" id="c-est-${i}"></span><button type="button" class="btn small ghost c-del">Remove</button></div>
+      </div>`;
+    }).join('');
+    $('cardio-empty').hidden = list.length > 0;
+  }
+  function readCardio(units) {
+    return [...document.querySelectorAll('#cardio-list .cardio-row')].map(row => {
+      const get = k => row.querySelector(`[data-k="${k}"]`);
+      const f = (k, d) => { const el = get(k); const v = el ? parseFloat(el.value) : NaN; return Number.isFinite(v) ? v : d; };
+      let speedKmh = f('speed', 5);
+      if (get('speed') && units === 'imperial') speedKmh *= KMH_PER_MPH;
+      return {
+        day: get('day').value, type: get('type').value, min: Math.max(0, f('min', 30)),
+        speedKmh: Math.min(30, Math.max(1, speedKmh)), incline: Math.min(20, Math.max(0, f('incline', 0))),
+        level: get('level') ? +get('level').value : 1,
+      };
+    });
+  }
+
   function buildEquipment() {
     $('equip-list').innerHTML = EQUIPMENT.map(g => `<div class="eq-group"><h4>${esc(g.group)}</h4>${
       g.items.map(([id, label]) => `<label class="eq-item"><input type="checkbox" id="eq-${id}" value="${id}" checked>${esc(label)}</label>`).join('')}</div>`).join('');
@@ -221,11 +296,13 @@
     const heightCm = units === 'imperial'
       ? ((num('height-ft') ?? 5) * 12 + (num('height-in') ?? 10)) * 2.54
       : (num('height-cm') ?? 178);
+    const trainDays = WEEK.filter(d => $('day-' + d).checked);
     return {
+      cardio: readCardio(units),
       name: $('name').value.trim(),
       sex: $('sex').value, age: num('age') ?? 25, units, weightKg, heightCm,
       weightRaw: num('weight'), heightCmRaw: num('height-cm'), heightFt: num('height-ft'), heightIn: num('height-in'),
-      bf: num('bf'), exp: $('exp').value, style: $('style').value, days: +$('days').value, session: +$('session').value,
+      bf: num('bf'), exp: $('exp').value, style: $('style').value, trainDays, days: trainDays.length, session: +$('session').value,
       double: $('double').value, pmSession: +$('pm-session').value,
       trainMin: +$('session').value + ($('double').value !== 'off' ? +$('pm-session').value : 0),
       activity: +$('activity').value,
@@ -240,10 +317,12 @@
     const set = (id, v) => { if (v !== undefined && v !== null && $(id)) $(id).value = v; };
     set('name', s.name || ''); set('sex', s.sex); set('age', s.age); set('units', s.units);
     set('weight', s.weightRaw); set('height-cm', s.heightCmRaw); set('height-ft', s.heightFt); set('height-in', s.heightIn);
-    $('bf').value = s.bf ?? ''; set('exp', s.exp); set('style', s.style || 'std'); set('days', s.days); set('session', s.session);
+    $('bf').value = s.bf ?? ''; set('exp', s.exp); set('style', s.style || 'std'); set('session', s.session);
     set('activity', s.activity); set('rate', s.rate); set('double', s.double || 'off'); set('pm-session', s.pmSession); $('goal-bf').value = s.goalBf ?? '';
     if (s.goal && $('goal-' + s.goal)) $('goal-' + s.goal).checked = true;
     document.querySelectorAll('#weak-list input').forEach(i => { i.checked = (s.weak || []).includes(i.value); });
+    setTrainDays(Array.isArray(s.trainDays) && s.trainDays.length ? s.trainDays : (DEFAULT_DAYS[s.days] || DEFAULT_DAYS[4]));
+    renderCardioRows(Array.isArray(s.cardio) ? s.cardio : [], s.units || 'metric');
     if (Array.isArray(s.equip)) document.querySelectorAll('#equip-list input').forEach(i => { i.checked = s.equip.includes(i.value); });
   }
 
@@ -255,8 +334,10 @@
     const bmr = lbm ? 370 + 21.6 * lbm : mifflin;
     const method = lbm ? 'Katch–McArdle (uses your lean mass)' : 'Mifflin–St Jeor';
     const factor = p.activity + 0.03 * p.days * Math.min(1.6, Math.max(0.6, p.trainMin / 75));
-    const tdee = bmr * factor;
-    const exKcalDay = p.days * p.trainMin * 5 / 7; // ~5 kcal per minute of lifting, averaged over the week
+    const cardioWeek = p.cardio.reduce((a, c) => a + cardioInfo(c, kg).kcal, 0);
+    const cardioDay = cardioWeek / 7;
+    const tdee = bmr * factor + cardioDay;
+    const exKcalDay = p.days * p.trainMin * 5 / 7 + cardioDay; // ~5 kcal per minute of lifting + cardio, averaged over the week
     const e = EXP_IDX[p.exp];
     const highBf = p.bf && ((p.sex === 'm' && p.bf > 25) || (p.sex === 'f' && p.bf > 33));
     const warnings = [];
@@ -319,7 +400,7 @@
       if (cutPlan.total > 20) warnings.push({ bad: false, t: 'Long cut ahead', d: 'Split it into blocks of 12–16 weeks with 4–8 weeks at maintenance in between.' });
     }
     const meals = 4;
-    return { kg, lbm, bmr, method, factor, tdee, target, protein, fat, carbs, ratePct, weeklyKg, label, warnings, ea,
+    return { kg, lbm, bmr, method, factor, tdee, cardioDay, cardioWeek, target, protein, fat, carbs, ratePct, weeklyKg, label, warnings, ea,
       fibre: r0(target * 14 / 1000), perMeal: r5(Math.min(protein / meals, Math.max(0.4 * kg, 25))), meals, cutPlan,
       waterRest: 0.035 * kg, waterTrain: 0.035 * kg + 0.75 * p.trainMin / 60 };
   }
@@ -349,7 +430,7 @@
     const upperEmph = p.weak.includes('upperChest');
     const have = new Set(p.equip);
     const usable = id => EX[id].eq.every(q => have.has(q));
-    const sessions = split.days.map(([name, day]) => ({ name, day, muscles: {} }));
+    const sessions = split.days.map(([name], i) => ({ name, day: p.trainDays[i], muscles: {} }));
     // useful hard sets per muscle per session; splitting a day in two allows a little more per day
     const cap = m => (weak.has(m) ? 8 : 6) + (mode === 'split' ? 3 : 0);
     // never trim a muscle below this many hard sets per week (maintenance-level volume)
@@ -529,6 +610,7 @@
             <tr><td>Resting burn (BMR)</td><td class="num">${fmt(n.bmr)} kcal</td></tr>
             <tr><td>Formula</td><td>${esc(n.method)}</td></tr>
             <tr><td>Activity multiplier</td><td class="num">× ${n.factor.toFixed(2)}</td></tr>
+            ${n.cardioWeek ? `<tr><td>Cardio (${fmt(n.cardioWeek)} kcal/week)</td><td class="num">+ ${fmt(n.cardioDay)} kcal/day</td></tr>` : ''}
             <tr><td>Maintenance (TDEE)</td><td class="num">${fmt(n.tdee)} kcal</td></tr>
             ${n.lbm ? `<tr><td>Lean body mass</td><td class="num">${wUnit(p, n.lbm)}</td></tr>` : ''}
             ${n.ea ? `<tr><td>Energy availability</td><td class="num">${n.ea.toFixed(0)} kcal/kg lean${n.ea < 30 ? ' — low' : ''}</td></tr>` : ''}
@@ -551,6 +633,7 @@
   }
 
   function renderTraining(p, plan) {
+    if (!plan) return `<div class="callout bad"><b>Pick at least 2 training days</b>Choose your lifting days in the Training section (2 to 6 days).</div>`;
     const e = EXP_IDX[p.exp];
     const sb = p.style === 'sb';
     const rir = sb ? { c: ['1–2', '0–1', '0–1'][e], i: ['0–1', '0', '0'][e] } : { c: ['2–3', '1–2', '1–2'][e], i: ['1–2', '0–1', '0–1'][e] };
@@ -575,19 +658,48 @@
         <td class="num">${it.sets}</td><td class="num">${x.r}</td><td class="num">${rir[x.k]}</td><td class="num">${rest[x.k]}</td></tr>`;
     }).join('');
     const subhead = (label, sets, min) => `<tr class="subhead"><td colspan="5"><span>${label}</span><span class="meta">${sets} sets · ~${min} min</span></td></tr>`;
-    const days = plan.sessions.map(s => {
+    const cardioOn = d => p.cardio.filter(c => c.day === d && c.min > 0);
+    const speedTxt = c => p.units === 'imperial' ? `${(c.speedKmh / KMH_PER_MPH).toFixed(1)} mph` : `${c.speedKmh.toFixed(1)} km/h`;
+    const cardioBlock = (list, legDay) => !list.length ? '' : `<div class="cardio-block">
+        <div class="cardio-title">Cardio${legDay ? '<span class="note"> · leg day: do it after lifting or 6+ h apart</span>' : ''}</div>
+        ${list.map(c => {
+          const info = cardioInfo(c, p.weightKg);
+          const detail = CARDIO_TYPES[c.type]?.tread ? `${speedTxt(c)} · ${c.incline}% incline` : '';
+          return `<div class="cardio-line"><b>${esc(info.name)}</b><span>${c.min} min${detail ? ' · ' + detail : ''}</span><span class="num">≈ ${fmt(info.kcal)} kcal · ${info.met.toFixed(1)} METs</span></div>`;
+        }).join('')}</div>`;
+    const isLegDay = s => s && s.items.some(it => it.m === 'quads' || it.m === 'hamstrings');
+    const days = WEEK.map(d => {
+      const s = plan.sessions.find(x => x.day === d);
+      const cardio = cardioOn(d);
+      if (!s && !cardio.length) return '';
+      if (!s) {
+        const mins = cardio.reduce((a, c) => a + c.min, 0);
+        return `<article class="day cardio-day"><div class="day-head"><h3>${d} · Cardio</h3><span class="meta">~${mins} min</span></div>${cardioBlock(cardio, false)}</article>`;
+      }
       const two = s.pm.length > 0;
       const body = two
         ? subhead('Morning', s.amSets, s.amMin) + rows(s.am) + subhead(plan.mode === 'small' ? 'Evening · small muscles' : 'Evening', s.pmSets, s.pmMin) + rows(s.pm)
         : rows(s.am);
       return `
       <article class="day">
-        <div class="day-head"><h3>${esc(s.day)} · ${esc(s.name)}</h3><span class="meta">${two ? '2 sessions · ' : ''}${s.totalSets} sets · ~${s.minutes} min</span></div>
+        <div class="day-head"><h3>${esc(s.day)} · ${esc(s.name)}</h3><span class="meta">${two ? '2 sessions · ' : ''}${s.totalSets} sets · ~${s.minutes} min${cardio.length ? ' + cardio' : ''}</span></div>
         <div class="tbl-wrap"><table>
           <thead><tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>RIR</th><th>Rest</th></tr></thead>
           <tbody>${body}</tbody></table></div>
+        ${cardioBlock(cardio, isLegDay(s))}
       </article>`;
     }).join('');
+    const weekStrip = `<div class="week">${WEEK.map(d => {
+      const s = plan.sessions.find(x => x.day === d);
+      const cmin = cardioOn(d).reduce((a, c) => a + c.min, 0);
+      return `<div class="wk${s ? ' lift' : ''}${!s && !cmin ? ' rest' : ''}"><b>${d}</b><span>${s ? esc(s.name) : (cmin ? 'Cardio' : 'Rest')}</span>${cmin && s ? `<span class="wk-c">+ ${cmin} min cardio</span>` : (cmin ? `<span class="wk-c">${cmin} min</span>` : '')}</div>`;
+    }).join('')}</div>`;
+    const cardioMin = p.cardio.reduce((a, c) => a + c.min, 0);
+    const vigMin = p.cardio.reduce((a, c) => a + (cardioInfo(c, p.weightKg).vigorous ? c.min : 0), 0);
+    const cardioKcal = p.cardio.reduce((a, c) => a + cardioInfo(c, p.weightKg).kcal, 0);
+    const cardioNote = cardioMin
+      ? `<div class="callout"><b>Cardio: ${cardioMin} min/week (≈ ${fmt(cardioKcal)} kcal)</b>${cardioMin - vigMin} min moderate and ${vigMin} min vigorous. Health guidelines suggest 150–300 min of moderate or 75–150 min of vigorous activity per week. These calories are already added to your daily calorie target.</div>`
+      : `<div class="callout"><b>No cardio added</b>Add sessions in the Cardio section of the form. Incline walking and cycling are the easiest to recover from alongside lifting.</div>`;
     const doubleTip = plan.mode === 'off' ? '' : `<div class="callout"><b>${plan.mode === 'small' ? 'Evening small-muscle sessions' : 'Two sessions on training days'}</b>${plan.mode === 'small'
       ? 'Delts, arms, calves and abs move to a short evening session, so the morning session has more time for the big lifts.'
       : "Each day's volume is shared between a morning and an evening session, so every set is done fresher."} Leave at least 6 hours between sessions and eat a protein meal (≈ ${r5(0.4 * p.weightKg)} g) in between.</div>`;
@@ -601,6 +713,8 @@
       ${notes.map(x => `<div class="callout${x.soft ? '' : ' bad'}"><b>${esc(x.t)}</b>${esc(x.d)}</div>`).join('')}
       <div><h3>Hard sets per muscle per week</h3><p class="hint" style="margin:2px 0 10px">Direct sets only. Compound lifts add extra indirect work (pressing for triceps and front delts, rows for biceps, squats for glutes).</p>
         <div class="vol">${vol}</div></div>
+      <div><h3>Your week</h3>${weekStrip}</div>
+      ${cardioNote}
       <div class="days">${days}</div>
       <div><h3>6-week block</h3>
         <div class="meso">
@@ -645,13 +759,16 @@
     const n = p.weak.length;
     document.querySelectorAll('#weak-list input').forEach(i => { i.disabled = !i.checked && n >= 3; });
     $('equip-count').textContent = `${p.equip.length}/${ALL_EQUIP.length}`;
+    document.querySelectorAll('#day-list input').forEach(i => { i.disabled = !i.checked && p.days >= 6; });
+    $('days-count').textContent = `${p.days} day${p.days === 1 ? '' : 's'}`;
   }
 
   function update() {
     const p = readState();
     syncUi(p);
     $('panel-nutrition').innerHTML = renderNutrition(p, nutrition(p));
-    $('panel-training').innerHTML = renderTraining(p, buildPlan(p));
+    $('panel-training').innerHTML = renderTraining(p, p.days >= 2 && p.days <= 6 ? buildPlan(p) : null);
+    p.cardio.forEach((c, i) => { const el = $('c-est-' + i); if (el) el.textContent = `≈ ${fmt(cardioInfo(c, p.weightKg).kcal)} kcal`; });
     try { localStorage.setItem('pp_last', JSON.stringify(p)); } catch (_) { /* storage blocked */ }
   }
 
@@ -679,7 +796,9 @@
   // ---------------------------------------------------------------- Init
   function init() {
     buildWeakChips();
+    buildDayChips();
     buildEquipment();
+    renderCardioRows([], $('units').value);
     // example weak points so the first view shows a real plan
     ['upperChest', 'sideDelts', 'hamstrings'].forEach(id => { const el = $('weak-' + id); if (el) el.checked = true; });
 
@@ -704,7 +823,30 @@
         const ft = parseFloat($('height-ft').value) || 0, inch = parseFloat($('height-in').value) || 0;
         $('height-cm').value = Math.round((ft * 12 + inch) * 2.54);
       }
+      renderCardioRows(readCardio(lastUnits), u); // convert treadmill speeds
       lastUnits = u;
+    });
+    $('btn-add-cardio').addEventListener('click', () => {
+      const units = $('units').value;
+      const list = readCardio(units);
+      const train = WEEK.filter(d => $('day-' + d).checked);
+      const used = new Set(list.map(c => c.day));
+      const day = WEEK.find(d => !train.includes(d) && !used.has(d)) || WEEK.find(d => !used.has(d)) || 'Mon';
+      list.push({ day, type: 'treadmill', min: 30, speedKmh: 5, incline: 8, level: 1 });
+      renderCardioRows(list, units);
+      update();
+    });
+    $('cardio-list').addEventListener('click', ev => {
+      const btn = ev.target.closest('.c-del');
+      if (!btn) return;
+      const units = $('units').value;
+      const i = +btn.closest('.cardio-row').dataset.i;
+      const list = readCardio(units); list.splice(i, 1);
+      renderCardioRows(list, units);
+      update();
+    });
+    $('cardio-list').addEventListener('change', ev => {
+      if (ev.target.dataset.k === 'type') renderCardioRows(readCardio($('units').value), $('units').value); // swap speed/incline vs intensity fields
     });
     $('form').addEventListener('input', update);
     $('form').addEventListener('change', update);

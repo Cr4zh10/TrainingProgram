@@ -91,6 +91,33 @@ fieldset.weak { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
 .chip input:disabled + span { opacity: .45; }
 
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+fieldset.daypick { border: 0; padding: 0; margin: 0; }
+fieldset.daypick legend { margin-bottom: 6px; }
+.days-chips { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.chip.day span { display: block; text-align: center; padding: 7px 0; border-radius: 8px; font-weight: 600; }
+.chip.day input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.cardio-list { display: grid; gap: 10px; }
+.cardio-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.cardio-row .span2c { grid-column: span 2; }
+.cardio-row input, .cardio-row select { background: var(--surface); }
+.cardio-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.c-est { font: 600 .82rem var(--font-mono); color: var(--muted); }
+
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.wk { border: 1px solid var(--line); border-radius: 8px; padding: 8px 6px; background: var(--surface-2); display: grid; gap: 2px; text-align: center; font-size: .78rem; min-width: 0; }
+.wk b { font-family: var(--font-display); font-size: 1rem; text-transform: uppercase; }
+.wk span { overflow-wrap: anywhere; }
+.wk.lift { border-top: 4px solid var(--accent); }
+.wk.rest { color: var(--muted); }
+.wk-c { color: var(--green); font-weight: 600; }
+.cardio-block { border-top: 1px solid var(--line); padding: 10px 14px; display: grid; gap: 6px; }
+.cardio-title { font: 700 .95rem var(--font-display); text-transform: uppercase; letter-spacing: .04em; color: var(--green); }
+.cardio-title .note { font-family: var(--font-body); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.cardio-line { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .88rem; align-items: baseline; }
+.cardio-line .num { font-family: var(--font-mono); color: var(--muted); font-size: .8rem; }
+.day.cardio-day .day-head { border-left: 4px solid var(--green); }
+
 .seg { position: relative; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; margin: 0; left: 0; top: 0; }
 .seg label { text-align: center; padding: 9px 4px; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; text-transform: uppercase; cursor: pointer; background: var(--surface-2); }
@@ -174,6 +201,7 @@ ul.tight { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-si
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cols { grid-template-columns: 1fr; }
   .meso { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .week { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 420px) {
   .grid2 { grid-template-columns: 1fr; }

@@ -69,9 +69,11 @@
             <option value="std" selected>Standard — 2–4 sets per exercise, effort builds over the block</option>
             <option value="sb">Science-based — 2 all-out sets per exercise, more variety</option>
           </select></div>
-        <div class="field"><label for="days">Days per week</label>
-          <select id="days"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></div>
-        <div class="field"><label for="session" id="session-label">Session length</label>
+        <fieldset class="field span2 daypick">
+          <legend>Lifting days <span class="opt">tap to switch on/off · <span id="days-count">4 days</span></span></legend>
+          <div id="day-list" class="chips days-chips"></div>
+        </fieldset>
+        <div class="field span2"><label for="session" id="session-label">Session length</label>
           <select id="session"><option value="45">45 min</option><option value="60">60 min</option><option value="75" selected>75 min</option><option value="90">90 min</option></select></div>
         <div class="field span2"><label for="double">Train twice a day?</label>
           <select id="double">
@@ -93,6 +95,12 @@
         <legend>Weak points to bring up <span class="opt">pick up to 3</span></legend>
         <div id="weak-list" class="chips"></div>
       </fieldset>
+    </section>
+
+    <section class="block">
+      <div class="block-head"><h2>Cardio</h2><button type="button" id="btn-add-cardio" class="btn small">Add session</button></div>
+      <div id="cardio-list" class="cardio-list"></div>
+      <p class="hint" id="cardio-empty">No cardio yet. Add a session, choose the day and machine, and set speed and incline for the treadmill. The calories are added to your daily target.</p>
     </section>
 
     <section class="block">

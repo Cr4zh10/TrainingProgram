@@ -4,6 +4,8 @@ A free, single-page website that builds a personal plan for you and your friends
 
 - **Calories and macros** for a cut, maingain or bulk, from body weight, body fat %, age, height, activity and training experience.
 - **A weak-point training programme** (3–6 days per week) built from the gym's Realleader machines, cables, Smith machine and dumbbells.
+- **Pick your own lifting days** (2–6, any weekdays), **twice-a-day** options, and a **science-based** 2-sets-per-exercise style.
+- **Cardio sessions** on any day: treadmill with your own speed and incline (ACSM walking/running equations), or bike, elliptical, stair climber and rower by intensity. Cardio calories are added to the daily target.
 - **Saved lifters** (stored in your own browser) and **share links** so each friend can open their own plan.
 
 No sign-up, no server, no build step — just `index.html`, `styles.css` and `app.js`.
