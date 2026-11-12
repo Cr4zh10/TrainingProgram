@@ -38,7 +38,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); }
 [hidden] { display: none !important; }
-.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1680px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 h1, h2, h3 { font-family: var(--font-display); letter-spacing: .01em; text-wrap: balance; margin: 0; }
 h2 { font-size: 1.35rem; text-transform: uppercase; }
@@ -62,7 +62,7 @@ h3 { font-size: 1.15rem; text-transform: uppercase; }
 .btn:focus-visible, .tab:focus-visible, select:focus-visible, input:focus-visible, .chip:focus-within, .seg label:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Layout */
-.layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 20px; align-items: start; padding-block: 20px 8px; }
+.layout { display: grid; grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); gap: 24px; align-items: start; padding-block: 20px 8px; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .form { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
 .block { padding: 16px 18px; border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
