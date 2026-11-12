@@ -153,6 +153,9 @@ ul.tight { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-si
 .day-head { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: space-between; align-items: baseline; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
 .day-head .meta { font: 500 .8rem var(--font-mono); color: var(--muted); }
 .day td.ex b { display: block; font-weight: 600; }
+.day tr.subhead td { background: var(--surface-2); font: 700 .95rem var(--font-display); text-transform: uppercase; letter-spacing: .04em; padding: 7px 8px; }
+.day tr.subhead td { display: table-cell; }
+.day tr.subhead span.meta { float: right; font: 500 .78rem var(--font-mono); color: var(--muted); text-transform: none; letter-spacing: 0; }
 .tag { display: inline-block; font: 700 .65rem var(--font-body); text-transform: uppercase; letter-spacing: .05em; border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; }
 .tag.weak { background: var(--red); color: #fff; }
 .tag.m { background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); margin-left: 0; margin-right: 6px; }

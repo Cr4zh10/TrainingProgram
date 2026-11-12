@@ -226,6 +226,8 @@
       sex: $('sex').value, age: num('age') ?? 25, units, weightKg, heightCm,
       weightRaw: num('weight'), heightCmRaw: num('height-cm'), heightFt: num('height-ft'), heightIn: num('height-in'),
       bf: num('bf'), exp: $('exp').value, days: +$('days').value, session: +$('session').value,
+      double: $('double').value, pmSession: +$('pm-session').value,
+      trainMin: +$('session').value + ($('double').value !== 'off' ? +$('pm-session').value : 0),
       activity: +$('activity').value,
       goal: document.querySelector('input[name="goal"]:checked').value,
       rate: +$('rate').value, goalBf: num('goal-bf'),
@@ -239,7 +241,7 @@
     set('name', s.name || ''); set('sex', s.sex); set('age', s.age); set('units', s.units);
     set('weight', s.weightRaw); set('height-cm', s.heightCmRaw); set('height-ft', s.heightFt); set('height-in', s.heightIn);
     $('bf').value = s.bf ?? ''; set('exp', s.exp); set('days', s.days); set('session', s.session);
-    set('activity', s.activity); set('rate', s.rate); $('goal-bf').value = s.goalBf ?? '';
+    set('activity', s.activity); set('rate', s.rate); set('double', s.double || 'off'); set('pm-session', s.pmSession); $('goal-bf').value = s.goalBf ?? '';
     if (s.goal && $('goal-' + s.goal)) $('goal-' + s.goal).checked = true;
     document.querySelectorAll('#weak-list input').forEach(i => { i.checked = (s.weak || []).includes(i.value); });
     if (Array.isArray(s.equip)) document.querySelectorAll('#equip-list input').forEach(i => { i.checked = s.equip.includes(i.value); });
@@ -252,9 +254,9 @@
     const mifflin = 10 * kg + 6.25 * p.heightCm - 5 * p.age + (p.sex === 'm' ? 5 : -161);
     const bmr = lbm ? 370 + 21.6 * lbm : mifflin;
     const method = lbm ? 'Katch–McArdle (uses your lean mass)' : 'Mifflin–St Jeor';
-    const factor = p.activity + 0.03 * p.days;
+    const factor = p.activity + 0.03 * p.days * Math.min(1.6, Math.max(0.6, p.trainMin / 75));
     const tdee = bmr * factor;
-    const exKcalDay = p.days * p.session * 5 / 7; // ~5 kcal per minute of lifting, averaged over the week
+    const exKcalDay = p.days * p.trainMin * 5 / 7; // ~5 kcal per minute of lifting, averaged over the week
     const e = EXP_IDX[p.exp];
     const highBf = p.bf && ((p.sex === 'm' && p.bf > 25) || (p.sex === 'f' && p.bf > 33));
     const warnings = [];
@@ -319,7 +321,7 @@
     const meals = 4;
     return { kg, lbm, bmr, method, factor, tdee, target, protein, fat, carbs, ratePct, weeklyKg, label, warnings, ea,
       fibre: r0(target * 14 / 1000), perMeal: r5(Math.min(protein / meals, Math.max(0.4 * kg, 25))), meals, cutPlan,
-      waterRest: 0.035 * kg, waterTrain: 0.035 * kg + 0.75 * p.session / 60 };
+      waterRest: 0.035 * kg, waterTrain: 0.035 * kg + 0.75 * p.trainMin / 60 };
   }
 
   // ---------------------------------------------------------------- Training plan
@@ -336,14 +338,18 @@
     return { sets: out, weak };
   }
 
+  const SMALL = new Set(['frontDelts', 'sideDelts', 'rearDelts', 'biceps', 'triceps', 'calves', 'abs']);
+
   function buildPlan(p) {
     const { sets, weak } = weeklySets(p);
     const split = SPLITS[p.days];
+    const mode = p.double || 'off'; // off | split | small
     const upperEmph = p.weak.includes('upperChest');
     const have = new Set(p.equip);
     const usable = id => EX[id].eq.every(q => have.has(q));
     const sessions = split.days.map(([name, day]) => ({ name, day, muscles: {} }));
-    const cap = m => weak.has(m) ? 8 : 6; // useful hard sets per muscle per session
+    // useful hard sets per muscle per session; splitting a day in two allows a little more per day
+    const cap = m => (weak.has(m) ? 8 : 6) + (mode === 'split' ? 3 : 0);
     // never trim a muscle below this many hard sets per week (maintenance-level volume)
     const WEEK_MIN = { chest: 6, lats: 6, upperBack: 6, quads: 6, hamstrings: 6, glutes: 4, frontDelts: 0, sideDelts: 6, rearDelts: 4, triceps: 4, biceps: 4, calves: 4, abs: 2 };
     const lost = [];
@@ -363,37 +369,47 @@
       });
     }
 
-    // 2) trim non-priority sets until each session fits the time limit
-    const minutes = sess => 8 + Object.values(sess.muscles).reduce((a, b) => a + b, 0) * 2.4;
+    // 2) trim non-priority sets until every session fits its time limit
+    //    off: one session per day · small: small muscles move to an evening session · split: the day's volume is shared by two sessions
+    const partOf = m => (mode === 'small' && SMALL.has(m)) ? 'pm' : 'am';
+    const units = [];
+    for (const sess of sessions) {
+      if (mode === 'split') units.push({ sess, part: 'all', limit: p.session + p.pmSession, warm: 16 });
+      else {
+        units.push({ sess, part: 'am', limit: p.session, warm: 8 });
+        if (mode === 'small') units.push({ sess, part: 'pm', limit: p.pmSession, warm: 5 });
+      }
+    }
+    const inUnit = (u, m) => u.part === 'all' || partOf(m) === u.part;
+    const unitSets = u => Object.entries(u.sess.muscles).filter(([m]) => inUnit(u, m)).reduce((a, [, s]) => a + s, 0);
+    const unitMin = u => unitSets(u) ? u.warm + unitSets(u) * 2.4 : 0;
     let trimmed = false;
     const weekTotal = m => sessions.reduce((a, s) => a + (s.muscles[m] || 0), 0);
     const stuck = new Set();
-    for (let guard = 0; guard < 400; guard++) {
-      // always work on the longest session that still has something to trim
-      const sess = sessions.filter(s => !stuck.has(s) && minutes(s) > p.session).sort((a, b) => minutes(b) - minutes(a))[0];
-      if (!sess) break;
-      {
-        // drop one set (or a whole 2-set slot) from the non-priority muscle furthest above its weekly minimum
-        const cands = Object.entries(sess.muscles)
-          .filter(([m, s]) => !weak.has(m) && s > 0)
-          .map(([m, s]) => ({ m, s, cut: s > 2 ? 1 : s, room: weekTotal(m) - WEEK_MIN[m] }))
-          .filter(c => c.room >= c.cut)
-          .sort((a, b) => b.room - a.room || b.s - a.s);
-        if (!cands.length) { stuck.add(sess); continue; }
-        const c = cands[0];
-        sess.muscles[c.m] -= c.cut;
-        if (!sess.muscles[c.m]) delete sess.muscles[c.m];
-        trimmed = true;
-      }
+    for (let guard = 0; guard < 600; guard++) {
+      // always work on the session that is furthest over its limit
+      const u = units.filter(x => !stuck.has(x) && unitMin(x) > x.limit).sort((a, b) => (unitMin(b) - b.limit) - (unitMin(a) - a.limit))[0];
+      if (!u) break;
+      // drop one set (or a whole 2-set slot) from the non-priority muscle furthest above its weekly minimum
+      const cands = Object.entries(u.sess.muscles)
+        .filter(([m, s]) => inUnit(u, m) && !weak.has(m) && s > 0)
+        .map(([m, s]) => ({ m, s, cut: s > 2 ? 1 : s, room: weekTotal(m) - WEEK_MIN[m] }))
+        .filter(c => c.room >= c.cut)
+        .sort((a, b) => b.room - a.room || b.s - a.s);
+      if (!cands.length) { stuck.add(u); continue; }
+      const c = cands[0];
+      u.sess.muscles[c.m] -= c.cut;
+      if (!u.sess.muscles[c.m]) delete u.sess.muscles[c.m];
+      trimmed = true;
     }
-    const overTime = sessions.filter(s => minutes(s) > p.session + 2).map(s => s.name);
+    const overTime = [...new Set(units.filter(u => unitMin(u) > u.limit + 2).map(u => u.sess.name + (u.part === 'pm' ? ' (evening)' : '')))];
 
     // 3) pick exercises
     const occ = {};
     const missing = new Set();
     for (const sess of sessions) {
       const used = new Set();
-      sess.items = [];
+      const items = [];
       for (const [m, s] of Object.entries(sess.muscles)) {
         if (!s) continue;
         const o = occ[m] = (occ[m] ?? -1) + 1;
@@ -408,17 +424,35 @@
           if (!free.length) { if (!list.length) missing.add(m); return; }
           const pick = free[o % Math.min(2, free.length)];
           used.add(pick);
-          sess.items.push({ m, id: pick, sets: ps, weak: weak.has(m), j });
+          items.push({ m, id: pick, sets: ps, weak: weak.has(m), j });
         });
       }
-      sess.items.sort((a, b) =>
+      items.sort((a, b) =>
         (b.weak - a.weak) || ((a.weak && b.weak) ? 0 : (EX[a.id].k === 'c' ? 0 : 1) - (EX[b.id].k === 'c' ? 0 : 1)) || (ORDER[a.m] - ORDER[b.m]) || (a.j - b.j));
-      sess.totalSets = sess.items.reduce((a, b) => a + b.sets, 0);
-      sess.minutes = Math.round(8 + sess.totalSets * 2.4);
+
+      // 4) morning / evening
+      sess.am = []; sess.pm = [];
+      if (mode === 'small') items.forEach(it => sess[partOf(it.m)].push(it));
+      else if (mode === 'split') {
+        const total = items.reduce((a, b) => a + b.sets, 0);
+        const target = total * p.session / (p.session + p.pmSession);
+        let amSets = 0, toPm = false;
+        for (const it of items) {
+          if (!toPm && (amSets === 0 || amSets + it.sets <= target + 1)) { sess.am.push(it); amSets += it.sets; }
+          else { toPm = true; sess.pm.push(it); }
+        }
+      } else sess.am = items;
+      const setsOf = arr => arr.reduce((a, b) => a + b.sets, 0);
+      sess.items = items;
+      sess.amSets = setsOf(sess.am); sess.pmSets = setsOf(sess.pm);
+      sess.amMin = sess.amSets ? Math.round(8 + sess.amSets * 2.4) : 0;
+      sess.pmMin = sess.pmSets ? Math.round((mode === 'small' ? 5 : 8) + sess.pmSets * 2.4) : 0;
+      sess.totalSets = sess.amSets + sess.pmSets;
+      sess.minutes = sess.amMin + sess.pmMin;
     }
     const finalSets = {};
     for (const sess of sessions) for (const it of sess.items) finalSets[it.m] = (finalSets[it.m] || 0) + it.sets;
-    return { split, sessions, finalSets, weak, trimmed, overTime, lost: [...new Set(lost)], missing: [...missing] };
+    return { split, mode, sessions, finalSets, weak, trimmed, overTime, lost: [...new Set(lost)], missing: [...missing] };
   }
 
   // ---------------------------------------------------------------- Render
@@ -508,22 +542,34 @@
       return `<div class="lab${w ? ' weak' : ''}">${esc(label)}</div><div class="bar"><div class="${w ? 'weak' : ''}" style="width:${plan.finalSets[m] / maxSets * 100}%"></div></div><div class="n">${plan.finalSets[m]}</div>`;
     }).join('');
 
-    const days = plan.sessions.map(s => `
+    const rows = list => list.map(it => {
+      const x = EX[it.id];
+      return `<tr><td class="ex"><b><span class="tag m">${esc(MUSCLE_LABEL[it.m])}</span>${esc(x.n)}${it.weak ? '<span class="tag weak">Priority</span>' : ''}</b><span class="note">${esc(x.t)}</span></td>
+        <td class="num">${it.sets}</td><td class="num">${x.r}</td><td class="num">${rir[x.k]}</td><td class="num">${rest[x.k]}</td></tr>`;
+    }).join('');
+    const subhead = (label, sets, min) => `<tr class="subhead"><td colspan="5"><span>${label}</span><span class="meta">${sets} sets · ~${min} min</span></td></tr>`;
+    const days = plan.sessions.map(s => {
+      const two = s.pm.length > 0;
+      const body = two
+        ? subhead('Morning', s.amSets, s.amMin) + rows(s.am) + subhead(plan.mode === 'small' ? 'Evening · small muscles' : 'Evening', s.pmSets, s.pmMin) + rows(s.pm)
+        : rows(s.am);
+      return `
       <article class="day">
-        <div class="day-head"><h3>${esc(s.day)} · ${esc(s.name)}</h3><span class="meta">${s.totalSets} sets · ~${s.minutes} min</span></div>
+        <div class="day-head"><h3>${esc(s.day)} · ${esc(s.name)}</h3><span class="meta">${two ? '2 sessions · ' : ''}${s.totalSets} sets · ~${s.minutes} min</span></div>
         <div class="tbl-wrap"><table>
           <thead><tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>RIR</th><th>Rest</th></tr></thead>
-          <tbody>${s.items.map(it => {
-            const x = EX[it.id];
-            return `<tr><td class="ex"><b><span class="tag m">${esc(MUSCLE_LABEL[it.m])}</span>${esc(x.n)}${it.weak ? '<span class="tag weak">Priority</span>' : ''}</b><span class="note">${esc(x.t)}</span></td>
-              <td class="num">${it.sets}</td><td class="num">${x.r}</td><td class="num">${rir[x.k]}</td><td class="num">${rest[x.k]}</td></tr>`;
-          }).join('')}</tbody></table></div>
-      </article>`).join('');
+          <tbody>${body}</tbody></table></div>
+      </article>`;
+    }).join('');
+    const doubleTip = plan.mode === 'off' ? '' : `<div class="callout"><b>${plan.mode === 'small' ? 'Evening small-muscle sessions' : 'Two sessions on training days'}</b>${plan.mode === 'small'
+      ? 'Delts, arms, calves and abs move to a short evening session, so the morning session has more time for the big lifts.'
+      : "Each day's volume is shared between a morning and an evening session, so every set is done fresher."} Leave at least 6 hours between sessions and eat a protein meal (≈ ${r5(0.4 * p.weightKg)} g) in between.</div>`;
 
     return `
       <div class="split-head"><h2>${p.days}-day ${esc(plan.split.name)}</h2><p>${esc(plan.split.why)}</p></div>
       ${weakNames.length ? `<div class="callout"><b>Priority: ${esc(weakNames.join(', '))}</b>These get extra weekly sets and go first in each session while you're fresh.</div>`
         : '<div class="callout"><b>No weak points picked</b>Choose up to three in the form to add extra volume to those muscles.</div>'}
+      ${doubleTip}
       ${notes.map(x => `<div class="callout${x.soft ? '' : ' bad'}"><b>${esc(x.t)}</b>${esc(x.d)}</div>`).join('')}
       <div><h3>Hard sets per muscle per week</h3><p class="hint" style="margin:2px 0 10px">Direct sets only. Compound lifts add extra indirect work (pressing for triceps and front delts, rows for biceps, squats for glutes).</p>
         <div class="vol">${vol}</div></div>
@@ -555,6 +601,8 @@
     document.querySelectorAll('.imperial-only').forEach(el => { el.hidden = p.units !== 'imperial'; });
     $('weight-label').textContent = `Body weight (${p.units === 'imperial' ? 'lb' : 'kg'})`;
     document.querySelectorAll('.cut-only').forEach(el => { el.hidden = p.goal !== 'cut'; });
+    document.querySelectorAll('.double-only').forEach(el => { el.hidden = p.double === 'off'; });
+    $('session-label').textContent = p.double === 'off' ? 'Session length' : 'Morning session';
     const hints = {
       cut: 'Lose fat while keeping muscle: moderate deficit, high protein, heavy training.',
       main: 'Build muscle slowly with almost no fat gain — good for most intermediates.',
