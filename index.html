@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plate Planner</title>
+<meta name="description" content="Personal calorie, macro and hypertrophy plan builder for our gym's machines and dumbbells.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 64 32" aria-hidden="true"><rect x="2" y="13" width="60" height="6" rx="2" fill="currentColor"/><rect x="8" y="3" width="8" height="26" rx="2" class="pl-red"/><rect x="17" y="6" width="6" height="20" rx="2" class="pl-blue"/><rect x="48" y="3" width="8" height="26" rx="2" class="pl-red"/><rect x="41" y="6" width="6" height="20" rx="2" class="pl-blue"/></svg>
+      <div>
+        <h1>Plate Planner</h1>
+        <p class="sub">Calories, macros and a weak-point training plan built around our gym's machines.</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="btn-share" class="btn ghost">Copy share link</button>
+      <button type="button" id="btn-print" class="btn ghost">Print plan</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap layout">
+  <!-- ================= FORM ================= -->
+  <form id="form" class="panel form" autocomplete="off">
+    <section class="block">
+      <div class="block-head">
+        <h2>Lifter</h2>
+        <div class="profile-row">
+          <label class="sr" for="profile-select">Saved lifters</label>
+          <select id="profile-select"><option value="">Saved lifters…</option></select>
+          <button type="button" id="btn-save" class="btn small">Save</button>
+          <button type="button" id="btn-delete" class="btn small ghost">Delete</button>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field span2"><label for="name">Name</label><input id="name" type="text" placeholder="e.g. Alex" maxlength="30"></div>
+        <div class="field"><label for="sex">Sex</label>
+          <select id="sex"><option value="m">Male</option><option value="f">Female</option></select></div>
+        <div class="field"><label for="age">Age</label><input id="age" type="number" min="14" max="90" value="25"></div>
+        <div class="field"><label for="units">Units</label>
+          <select id="units"><option value="metric">kg / cm</option><option value="imperial">lb / ft-in</option></select></div>
+        <div class="field metric-only"><label for="height-cm">Height (cm)</label><input id="height-cm" type="number" min="120" max="230" value="178"></div>
+        <div class="field imperial-only" hidden><label for="height-ft">Height (ft, in)</label>
+          <div class="pair"><input id="height-ft" type="number" min="4" max="7" value="5" aria-label="feet"><input id="height-in" type="number" min="0" max="11" value="10" aria-label="inches"></div></div>
+        <div class="field"><label for="weight"><span id="weight-label">Body weight (kg)</span></label><input id="weight" type="number" step="0.1" min="35" max="400" value="80"></div>
+        <div class="field"><label for="bf">Body fat % <span class="opt">optional</span></label><input id="bf" type="number" step="0.5" min="3" max="60" placeholder="e.g. 16" value="16"></div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Training</h2>
+      <div class="grid2">
+        <div class="field span2"><label for="exp">Training experience</label>
+          <select id="exp">
+            <option value="beg">Beginner — under 1 year of consistent lifting</option>
+            <option value="int" selected>Intermediate — 1 to 3 years</option>
+            <option value="adv">Advanced — 3+ years, close to your potential</option>
+          </select></div>
+        <div class="field"><label for="days">Days per week</label>
+          <select id="days"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></div>
+        <div class="field"><label for="session">Session length</label>
+          <select id="session"><option value="45">45 min</option><option value="60">60 min</option><option value="75" selected>75 min</option><option value="90">90 min</option></select></div>
+        <div class="field span2"><label for="activity">Activity outside the gym</label>
+          <select id="activity">
+            <option value="1.35">Mostly sitting — under 5,000 steps/day</option>
+            <option value="1.45" selected>Light — 5,000 to 8,000 steps/day</option>
+            <option value="1.55">Active — 8,000 to 12,000 steps/day</option>
+            <option value="1.7">Very active job — 12,000+ steps/day</option>
+          </select></div>
+      </div>
+      <fieldset class="weak">
+        <legend>Weak points to bring up <span class="opt">pick up to 3</span></legend>
+        <div id="weak-list" class="chips"></div>
+      </fieldset>
+    </section>
+
+    <section class="block">
+      <h2>Goal</h2>
+      <div class="seg" role="radiogroup" aria-label="Goal">
+        <input type="radio" name="goal" id="goal-cut" value="cut"><label for="goal-cut">Cut</label>
+        <input type="radio" name="goal" id="goal-main" value="main" checked><label for="goal-main">Maingain</label>
+        <input type="radio" name="goal" id="goal-bulk" value="bulk"><label for="goal-bulk">Bulk</label>
+      </div>
+      <div class="grid2 cut-only" hidden>
+        <div class="field"><label for="rate">Cut speed</label>
+          <select id="rate">
+            <option value="0.5">Gentle — 0.5% of body weight/week</option>
+            <option value="0.75" selected>Standard — 0.75%/week</option>
+            <option value="1">Fast — 1%/week</option>
+          </select></div>
+        <div class="field"><label for="goal-bf">Target body fat % <span class="opt">optional</span></label><input id="goal-bf" type="number" step="0.5" min="4" max="40" placeholder="e.g. 12"></div>
+      </div>
+      <p class="hint" id="goal-hint"></p>
+    </section>
+
+    <details class="block equip">
+      <summary><h2>Equipment</h2><span id="equip-count" class="pill"></span></summary>
+      <p class="hint">Untick anything your gym doesn't have. The plan only uses ticked equipment.</p>
+      <div id="equip-list"></div>
+    </details>
+  </form>
+
+  <!-- ================= RESULTS ================= -->
+  <section class="results" aria-live="polite">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-nutrition" aria-selected="true" aria-controls="panel-nutrition" class="tab">Calories &amp; macros</button>
+      <button type="button" role="tab" id="tab-training" aria-selected="false" aria-controls="panel-training" class="tab">Training plan</button>
+    </div>
+
+    <div id="panel-nutrition" role="tabpanel" aria-labelledby="tab-nutrition" class="panel out"></div>
+    <div id="panel-training" role="tabpanel" aria-labelledby="tab-training" class="panel out" hidden></div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>Targets come from published sports-science guidelines (ISSN, ACSM and hypertrophy meta-analyses). They are starting points: check your weekly average weight and adjust. Not medical advice — talk to a doctor if you have kidney, liver, heart or blood-sugar conditions.</p>
+</footer>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
