@@ -225,7 +225,7 @@
       name: $('name').value.trim(),
       sex: $('sex').value, age: num('age') ?? 25, units, weightKg, heightCm,
       weightRaw: num('weight'), heightCmRaw: num('height-cm'), heightFt: num('height-ft'), heightIn: num('height-in'),
-      bf: num('bf'), exp: $('exp').value, days: +$('days').value, session: +$('session').value,
+      bf: num('bf'), exp: $('exp').value, style: $('style').value, days: +$('days').value, session: +$('session').value,
       double: $('double').value, pmSession: +$('pm-session').value,
       trainMin: +$('session').value + ($('double').value !== 'off' ? +$('pm-session').value : 0),
       activity: +$('activity').value,
@@ -240,7 +240,7 @@
     const set = (id, v) => { if (v !== undefined && v !== null && $(id)) $(id).value = v; };
     set('name', s.name || ''); set('sex', s.sex); set('age', s.age); set('units', s.units);
     set('weight', s.weightRaw); set('height-cm', s.heightCmRaw); set('height-ft', s.heightFt); set('height-in', s.heightIn);
-    $('bf').value = s.bf ?? ''; set('exp', s.exp); set('days', s.days); set('session', s.session);
+    $('bf').value = s.bf ?? ''; set('exp', s.exp); set('style', s.style || 'std'); set('days', s.days); set('session', s.session);
     set('activity', s.activity); set('rate', s.rate); set('double', s.double || 'off'); set('pm-session', s.pmSession); $('goal-bf').value = s.goalBf ?? '';
     if (s.goal && $('goal-' + s.goal)) $('goal-' + s.goal).checked = true;
     document.querySelectorAll('#weak-list input').forEach(i => { i.checked = (s.weak || []).includes(i.value); });
@@ -344,6 +344,8 @@
     const { sets, weak } = weeklySets(p);
     const split = SPLITS[p.days];
     const mode = p.double || 'off'; // off | split | small
+    const sb = p.style === 'sb'; // science-based: 2 all-out sets per exercise
+    const setMin = sb ? 2.8 : 2.4; // minutes per set incl. rest
     const upperEmph = p.weak.includes('upperChest');
     const have = new Set(p.equip);
     const usable = id => EX[id].eq.every(q => have.has(q));
@@ -382,7 +384,7 @@
     }
     const inUnit = (u, m) => u.part === 'all' || partOf(m) === u.part;
     const unitSets = u => Object.entries(u.sess.muscles).filter(([m]) => inUnit(u, m)).reduce((a, [, s]) => a + s, 0);
-    const unitMin = u => unitSets(u) ? u.warm + unitSets(u) * 2.4 : 0;
+    const unitMin = u => unitSets(u) ? u.warm + unitSets(u) * setMin : 0;
     let trimmed = false;
     const weekTotal = m => sessions.reduce((a, s) => a + (s.muscles[m] || 0), 0);
     const stuck = new Set();
@@ -402,26 +404,41 @@
       if (!u.sess.muscles[c.m]) delete u.sess.muscles[c.m];
       trimmed = true;
     }
-    const overTime = [...new Set(units.filter(u => unitMin(u) > u.limit + 2).map(u => u.sess.name + (u.part === 'pm' ? ' (evening)' : '')))];
 
     // 3) pick exercises
     const occ = {};
     const missing = new Set();
+    const fewEx = new Set();
     for (const sess of sessions) {
       const used = new Set();
       const items = [];
       for (const [m, s] of Object.entries(sess.muscles)) {
         if (!s) continue;
         const o = occ[m] = (occ[m] ?? -1) + 1;
-        const parts = s <= 4 ? [s] : s <= 8 ? [Math.ceil(s / 2), Math.floor(s / 2)] : [Math.ceil(s / 3), Math.ceil((s - Math.ceil(s / 3)) / 2), s - Math.ceil(s / 3) - Math.ceil((s - Math.ceil(s / 3)) / 2)];
+        let parts;
+        if (sb) {
+          // even number of sets, 2 per exercise (round priority muscles up, others down)
+          const even = s % 2 ? (weak.has(m) ? s + 1 : Math.max(2, s - 1)) : s;
+          parts = Array(even / 2).fill(2);
+        } else {
+          parts = s <= 4 ? [s] : s <= 8 ? [Math.ceil(s / 2), Math.floor(s / 2)] : [Math.ceil(s / 3), Math.ceil((s - Math.ceil(s / 3)) / 2), s - Math.ceil(s / 3) - Math.ceil((s - Math.ceil(s / 3)) / 2)];
+        }
         const roles = ['p', 's', 'p2'];
         parts.forEach((ps, j) => {
           const L = LISTS[m];
-          let list = roles[j] === 's' ? [...L.s, ...L.p] : roles[j] === 'p2' ? [...L.p.slice(1), ...L.s] : [...L.p, ...L.s];
+          let list;
+          if (sb) { const k = j >> 1; list = j % 2 === 0 ? [...L.p.slice(k), ...L.p, ...L.s] : [...L.s.slice(k), ...L.s, ...L.p]; }
+          else list = roles[j] === 's' ? [...L.s, ...L.p] : roles[j] === 'p2' ? [...L.p.slice(1), ...L.s] : [...L.p, ...L.s];
           list = [...new Set(list)].filter(usable);
           if (m === 'chest' && upperEmph) list.sort((a, b) => (EX[b].up || 0) - (EX[a].up || 0));
           const free = list.filter(id => !used.has(id));
-          if (!free.length) { if (!list.length) missing.add(m); return; }
+          if (!free.length) {
+            if (!list.length) { missing.add(m); return; }
+            if (sb) { fewEx.add(m); return; } // science-based keeps exactly 2 sets per exercise: drop the extra sets
+            const last = [...items].reverse().find(x => x.m === m); // ran out of different exercises: add the sets to the last one
+            if (last) last.sets += ps;
+            return;
+          }
           const pick = free[o % Math.min(2, free.length)];
           used.add(pick);
           items.push({ m, id: pick, sets: ps, weak: weak.has(m), j });
@@ -445,14 +462,22 @@
       const setsOf = arr => arr.reduce((a, b) => a + b.sets, 0);
       sess.items = items;
       sess.amSets = setsOf(sess.am); sess.pmSets = setsOf(sess.pm);
-      sess.amMin = sess.amSets ? Math.round(8 + sess.amSets * 2.4) : 0;
-      sess.pmMin = sess.pmSets ? Math.round((mode === 'small' ? 5 : 8) + sess.pmSets * 2.4) : 0;
+      sess.amMin = sess.amSets ? Math.round(8 + sess.amSets * setMin) : 0;
+      sess.pmMin = sess.pmSets ? Math.round((mode === 'small' ? 5 : 8) + sess.pmSets * setMin) : 0;
       sess.totalSets = sess.amSets + sess.pmSets;
       sess.minutes = sess.amMin + sess.pmMin;
     }
     const finalSets = {};
     for (const sess of sessions) for (const it of sess.items) finalSets[it.m] = (finalSets[it.m] || 0) + it.sets;
-    return { split, mode, sessions, finalSets, weak, trimmed, overTime, lost: [...new Set(lost)], missing: [...missing] };
+    const overTime = [];
+    for (const sess of sessions) {
+      if (mode === 'split') { if (sess.minutes > p.session + p.pmSession + 2) overTime.push(sess.name); }
+      else {
+        if (sess.amMin > p.session + 2) overTime.push(sess.name);
+        if (sess.pmMin > p.pmSession + 2) overTime.push(sess.name + ' (evening)');
+      }
+    }
+    return { split, mode, sessions, finalSets, weak, trimmed, overTime, fewEx: [...fewEx], lost: [...new Set(lost)], missing: [...missing] };
   }
 
   // ---------------------------------------------------------------- Render
@@ -527,14 +552,16 @@
 
   function renderTraining(p, plan) {
     const e = EXP_IDX[p.exp];
-    const rir = { c: ['2–3', '1–2', '1–2'][e], i: ['1–2', '0–1', '0–1'][e] };
-    const rest = { c: '2–3 min', i: '1–2 min' };
+    const sb = p.style === 'sb';
+    const rir = sb ? { c: ['1–2', '0–1', '0–1'][e], i: ['0–1', '0', '0'][e] } : { c: ['2–3', '1–2', '1–2'][e], i: ['1–2', '0–1', '0–1'][e] };
+    const rest = sb ? { c: '3–4 min', i: '2–3 min' } : { c: '2–3 min', i: '1–2 min' };
     const maxSets = Math.max(...Object.values(plan.finalSets), 1);
     const weakNames = p.weak.map(w => w === 'upperChest' ? 'Upper chest' : MUSCLE_LABEL[w]);
     const notes = [];
     if (plan.trimmed) notes.push({ soft: true, t: 'Some sets were trimmed to fit your session length', d: 'Non-priority muscles lost a few sets. Choose a longer session or more days to train everything at full volume.' });
     if (plan.overTime.length) notes.push({ soft: true, t: 'Some sessions run over your time limit', d: `${plan.overTime.join(', ')} keep minimum volume for every muscle, so they run a bit long. Pick fewer priorities, a longer session, or more days.` });
     if (plan.lost.length) notes.push({ t: 'Per-session cap reached', d: `${plan.lost.map(m => MUSCLE_LABEL[m]).join(', ')} hit the limit of about 8 useful sets per session, so the extra sets were dropped. More training days would spread them out.` });
+    if (plan.fewEx.length) notes.push({ soft: true, t: 'Not enough different exercises', d: `${plan.fewEx.map(m => MUSCLE_LABEL[m]).join(', ')} ran out of different exercises with your ticked equipment, so a few sets were left out to keep 2 sets per exercise. Tick more machines or cables to get the full volume.` });
     if (plan.missing.length) notes.push({ t: 'Missing equipment', d: `No ticked equipment can train: ${plan.missing.map(m => MUSCLE_LABEL[m]).join(', ')}. Tick dumbbells/bench or a matching machine.` });
 
     const vol = MUSCLES.filter(([m]) => plan.finalSets[m]).map(([m, label]) => {
@@ -569,6 +596,7 @@
       <div class="split-head"><h2>${p.days}-day ${esc(plan.split.name)}</h2><p>${esc(plan.split.why)}</p></div>
       ${weakNames.length ? `<div class="callout"><b>Priority: ${esc(weakNames.join(', '))}</b>These get extra weekly sets and go first in each session while you're fresh.</div>`
         : '<div class="callout"><b>No weak points picked</b>Choose up to three in the form to add extra volume to those muscles.</div>'}
+      ${sb ? `<div class="callout"><b>Science-based style: 2 hard sets per exercise</b>Fewer sets per exercise but every set close to failure, with longer rests and more exercise variety per muscle. Weekly sets per muscle stay in the 10–20 range that research links to the most growth.</div>` : ''}
       ${doubleTip}
       ${notes.map(x => `<div class="callout${x.soft ? '' : ' bad'}"><b>${esc(x.t)}</b>${esc(x.d)}</div>`).join('')}
       <div><h3>Hard sets per muscle per week</h3><p class="hint" style="margin:2px 0 10px">Direct sets only. Compound lifts add extra indirect work (pressing for triceps and front delts, rows for biceps, squats for glutes).</p>
@@ -576,12 +604,17 @@
       <div class="days">${days}</div>
       <div><h3>6-week block</h3>
         <div class="meso">
-          <div><b>Week 1</b>${['3', '3', '2–3'][e]} RIR</div><div><b>Week 2</b>2–3 RIR</div><div><b>Week 3</b>2 RIR</div>
-          <div><b>Week 4</b>1–2 RIR</div><div><b>Week 5</b>${e ? '0–1' : '1'} RIR</div><div class="deload"><b>Week 6</b>Deload: half the sets, 3–4 RIR</div>
+          ${sb ? `<div><b>Week 1</b>1–2 RIR: find your weights</div><div><b>Week 2</b>${rir.i} RIR, beat last week</div><div><b>Week 3</b>${rir.i} RIR, beat last week</div>
+          <div><b>Week 4</b>${rir.i} RIR, beat last week</div><div><b>Week 5</b>${rir.i} RIR, beat last week</div><div class="deload"><b>Week 6</b>Deload: 1 set per exercise, 3 RIR</div>`
+          : `<div><b>Week 1</b>${['3', '3', '2–3'][e]} RIR</div><div><b>Week 2</b>2–3 RIR</div><div><b>Week 3</b>2 RIR</div>
+          <div><b>Week 4</b>1–2 RIR</div><div><b>Week 5</b>${e ? '0–1' : '1'} RIR</div><div class="deload"><b>Week 6</b>Deload: half the sets, 3–4 RIR</div>`}
         </div></div>
       <div class="cols">
         <div><h3>How to progress</h3><ul class="tight">
-          <li>Double progression: hit the top of the rep range on every set, then add the smallest weight step (one pin or 2.5–5 kg plate).</li>
+          ${sb ? `<li>Set 1: take it to ${rir.i === '0' ? 'failure' : 'about 1 rep from failure'} in the rep range. Set 2: same weight (or about 10% lighter) to the same effort.</li>
+          <li>When set 1 reaches the top of the rep range, add the smallest weight step next session.</li>
+          <li>On isolation exercises you can add a few lengthened partials (bottom half of the rep) after the last full rep.</li>`
+          : '<li>Double progression: hit the top of the rep range on every set, then add the smallest weight step (one pin or 2.5–5 kg plate).</li>'}
           <li>RIR = reps in reserve: how many more clean reps you could have done.</li>
           <li>Log every set. Keep the same exercises for the whole 6 weeks.</li>
           <li>Warm up with 2–3 lighter ramp-up sets on the first exercise for each muscle.</li>
