@@ -131,6 +131,10 @@
     db_calf: { n: 'Single-leg dumbbell calf raise', eq: ['db'], k: 'i', r: '10–15', t: 'Stand on a step for full range.' },
     seated_calf: { n: 'Seated calf raise', eq: ['seated_calf'], k: 'i', r: '12–20', t: 'Targets the soleus.' },
 
+    db_shrug: { n: 'Dumbbell shrug', eq: ['db'], k: 'i', r: '10–15', t: 'Shrug straight up, pause 1 s at the top; full stretch at the bottom.' },
+    smith_shrug: { n: 'Smith machine shrug', eq: ['smith'], k: 'i', r: '10–15', t: 'Bar in front of the thighs; lift the shoulders to the ears, no neck roll.' },
+    cable_shrug: { n: 'Cable shrug', eq: ['cable'], k: 'i', r: '12–15', t: 'Constant tension; squeeze at the top, slow lowering.' },
+
     ab_mach: { n: 'Ab crunch machine', eq: ['ab_crunch'], k: 'i', r: '10–15', t: 'Curl the spine; exhale hard.' },
     cable_crunch: { n: 'Cable crunch', eq: ['cable'], k: 'i', r: '10–15', t: 'Hips stay still; ribs to pelvis.' },
     knee_raise: { n: "Captain's chair leg raise", eq: ['captains_chair'], k: 'i', r: '10–15', t: 'Curl the pelvis up, no swinging.' },
@@ -147,6 +151,7 @@
     rearDelts: { p: ['rev_pec', 'cable_rev', 'db_rear'], s: ['face_pull', 'db_rear'] },
     biceps: { p: ['preacher_m', 'incline_curl', 'bayesian'], s: ['hammer', 'cable_curl', 'incline_curl'] },
     triceps: { p: ['oh_cable', 'tri_mach', 'db_oh_ext', 'dip_assist'], s: ['pushdown', 'dip_assist', 'db_skull'] },
+    traps: { p: ['db_shrug', 'smith_shrug', 'cable_shrug'], s: ['cable_shrug', 'db_shrug', 'smith_shrug'] },
     quads: { p: ['hack', 'pendulum', 'leg_press', 'smith_squat', 'bss', 'goblet'], s: ['leg_ext', 'bss', 'leg_press'] },
     hamstrings: { p: ['seated_curl', 'lying_curl', 'db_rdl'], s: ['db_rdl', 'smith_rdl', 'back_ext_ham', 'lying_curl'] },
     glutes: { p: ['hip_thrust_m', 'smith_thrust', 'db_thrust', 'bss'], s: ['abductor', 'kickback_m', 'cable_kick', 'back_ext_glute'] },
@@ -156,7 +161,7 @@
 
   // ---------------------------------------------------------------- Muscles & volume
   const MUSCLES = [
-    ['chest', 'Chest'], ['lats', 'Lats (width)'], ['upperBack', 'Upper back'], ['quads', 'Quads'],
+    ['chest', 'Chest'], ['lats', 'Lats (width)'], ['upperBack', 'Upper back'], ['traps', 'Traps'], ['quads', 'Quads'],
     ['hamstrings', 'Hamstrings'], ['glutes', 'Glutes'], ['frontDelts', 'Front delts'], ['sideDelts', 'Side delts'],
     ['rearDelts', 'Rear delts'], ['triceps', 'Triceps'], ['biceps', 'Biceps'], ['calves', 'Calves'], ['abs', 'Abs'],
   ];
@@ -167,17 +172,19 @@
   // Direct hard sets per week by experience [beginner, intermediate, advanced]
   const BASE_SETS = {
     chest: [10, 12, 14], lats: [8, 10, 12], upperBack: [8, 10, 12], quads: [10, 12, 14], hamstrings: [8, 10, 12],
-    glutes: [4, 6, 8], frontDelts: [0, 0, 0], sideDelts: [8, 10, 14], rearDelts: [4, 6, 8], triceps: [6, 8, 10],
+    glutes: [4, 6, 8], frontDelts: [0, 0, 0], traps: [0, 0, 0], sideDelts: [8, 10, 14], rearDelts: [4, 6, 8], triceps: [6, 8, 10],
     biceps: [6, 8, 10], calves: [6, 8, 10], abs: [4, 6, 6],
   };
-  const WEAK_FRONT = [6, 8, 10];
+  // muscles with no base volume (they get indirect work) start at this many direct sets when picked as a priority
+  const WEAK_FLOOR = { frontDelts: [6, 8, 10], traps: [6, 8, 10] };
+  const MAX_WEAK = 6;
   const WEAK_BONUS = [4, 6, 6];
   const EXP_IDX = { beg: 0, int: 1, adv: 2 };
 
-  const UP = ['chest', 'lats', 'upperBack', 'frontDelts', 'sideDelts', 'rearDelts', 'biceps', 'triceps'];
+  const UP = ['chest', 'lats', 'upperBack', 'traps', 'frontDelts', 'sideDelts', 'rearDelts', 'biceps', 'triceps'];
   const LOW = ['quads', 'hamstrings', 'glutes', 'calves', 'abs'];
   const PUSH = ['chest', 'frontDelts', 'sideDelts', 'triceps'];
-  const PULL = ['lats', 'upperBack', 'rearDelts', 'biceps'];
+  const PULL = ['lats', 'upperBack', 'traps', 'rearDelts', 'biceps'];
   const FULL = [...UP, ...LOW];
   const SPLITS = {
     2: { name: 'Full body ×2', why: 'Every muscle 2× per week in two longer sessions.',
@@ -412,7 +419,7 @@
     const out = {};
     for (const [m] of MUSCLES) {
       let s = BASE_SETS[m][e];
-      if (weak.has(m)) s = m === 'frontDelts' ? WEAK_FRONT[e] : s + WEAK_BONUS[e];
+      if (weak.has(m)) s = WEAK_FLOOR[m] ? WEAK_FLOOR[m][e] : s + WEAK_BONUS[e];
       else if (p.goal === 'cut' && s > 0) s = Math.max(2, Math.round(s * 0.85));
       out[m] = s;
     }
@@ -434,7 +441,7 @@
     // useful hard sets per muscle per session; splitting a day in two allows a little more per day
     const cap = m => (weak.has(m) ? 8 : 6) + (mode === 'split' ? 3 : 0);
     // never trim a muscle below this many hard sets per week (maintenance-level volume)
-    const WEEK_MIN = { chest: 6, lats: 6, upperBack: 6, quads: 6, hamstrings: 6, glutes: 4, frontDelts: 0, sideDelts: 6, rearDelts: 4, triceps: 4, biceps: 4, calves: 4, abs: 2 };
+    const WEEK_MIN = { chest: 6, lats: 6, upperBack: 6, traps: 0, quads: 6, hamstrings: 6, glutes: 4, frontDelts: 0, sideDelts: 6, rearDelts: 4, triceps: 4, biceps: 4, calves: 4, abs: 2 };
     const lost = [];
 
     // 1) spread each muscle's weekly sets across the days it appears
@@ -641,6 +648,7 @@
     const maxSets = Math.max(...Object.values(plan.finalSets), 1);
     const weakNames = p.weak.map(w => w === 'upperChest' ? 'Upper chest' : MUSCLE_LABEL[w]);
     const notes = [];
+    if (p.weak.length > 4) notes.push({ soft: true, t: 'Lots of priorities', d: 'Priority muscles are never trimmed and each gets extra sets, so sessions get long and recovery gets harder. If it feels like too much, keep 3 to 4 priorities or add a training day.' });
     if (plan.trimmed) notes.push({ soft: true, t: 'Some sets were trimmed to fit your session length', d: 'Non-priority muscles lost a few sets. Choose a longer session or more days to train everything at full volume.' });
     if (plan.overTime.length) notes.push({ soft: true, t: 'Some sessions run over your time limit', d: `${plan.overTime.join(', ')} keep minimum volume for every muscle, so they run a bit long. Pick fewer priorities, a longer session, or more days.` });
     if (plan.lost.length) notes.push({ t: 'Per-session cap reached', d: `${plan.lost.map(m => MUSCLE_LABEL[m]).join(', ')} hit the limit of about 8 useful sets per session, so the extra sets were dropped. More training days would spread them out.` });
@@ -707,7 +715,7 @@
     return `
       <div class="split-head"><h2>${p.days}-day ${esc(plan.split.name)}</h2><p>${esc(plan.split.why)}</p></div>
       ${weakNames.length ? `<div class="callout"><b>Priority: ${esc(weakNames.join(', '))}</b>These get extra weekly sets and go first in each session while you're fresh.</div>`
-        : '<div class="callout"><b>No weak points picked</b>Choose up to three in the form to add extra volume to those muscles.</div>'}
+        : '<div class="callout"><b>No weak points picked</b>Choose up to six in the form to add extra volume to those muscles.</div>'}
       ${sb ? `<div class="callout"><b>Science-based style: 2 hard sets per exercise</b>Fewer sets per exercise but every set close to failure, with longer rests and more exercise variety per muscle. Weekly sets per muscle stay in the 10–20 range that research links to the most growth.</div>` : ''}
       ${doubleTip}
       ${notes.map(x => `<div class="callout${x.soft ? '' : ' bad'}"><b>${esc(x.t)}</b>${esc(x.d)}</div>`).join('')}
@@ -757,7 +765,7 @@
     };
     $('goal-hint').textContent = hints[p.goal];
     const n = p.weak.length;
-    document.querySelectorAll('#weak-list input').forEach(i => { i.disabled = !i.checked && n >= 3; });
+    document.querySelectorAll('#weak-list input').forEach(i => { i.disabled = !i.checked && n >= MAX_WEAK; });
     $('equip-count').textContent = `${p.equip.length}/${ALL_EQUIP.length}`;
     document.querySelectorAll('#day-list input').forEach(i => { i.disabled = !i.checked && p.days >= 6; });
     $('days-count').textContent = `${p.days} day${p.days === 1 ? '' : 's'}`;
