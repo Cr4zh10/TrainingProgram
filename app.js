@@ -181,6 +181,28 @@
   const WEAK_BONUS = [4, 6, 6];
   const EXP_IDX = { beg: 0, int: 1, adv: 2 };
 
+  // Daily steps -> activity multiplier on BMR (before lifting and cardio). The anchors reproduce the old four
+  // presets (4,000 = 1.35, 6,500 = 1.45, 10,000 = 1.55, 14,000 = 1.70); anything in between is interpolated.
+  const STEP_ANCHORS = [[1000, 1.22], [2500, 1.30], [4000, 1.35], [6500, 1.45], [10000, 1.55], [14000, 1.70], [20000, 1.85], [30000, 2.0]];
+  const OLD_ACTIVITY_STEPS = { '1.35': 4000, '1.45': 6500, '1.55': 10000, '1.7': 14000 };
+  function stepFactor(steps) {
+    const A = STEP_ANCHORS;
+    if (steps <= A[0][0]) return A[0][1];
+    for (let i = 1; i < A.length; i++) {
+      if (steps <= A[i][0]) { const [x0, y0] = A[i - 1], [x1, y1] = A[i]; return y0 + (y1 - y0) * (steps - x0) / (x1 - x0); }
+    }
+    return A[A.length - 1][1];
+  }
+
+  // Macro styles: protein multiplier, and how fat and carbs are set once protein is fixed.
+  const MACRO_STYLES = {
+    bal: { n: 'Balanced', prot: 1, d: 'Moderate fat, carbs fill the rest. A good default for most lifters.' },
+    hp: { n: 'High protein', prot: 1.2, d: 'About 20% more protein than the default, with carbs lowered to match. Helps with hunger on a cut; muscle gain levels off above roughly 2.2 g per kg of body weight.' },
+    hc: { n: 'High carb', prot: 1, d: 'Fat kept low and carbs high. Suits heavy volume, long sessions or a lot of daily activity.' },
+    lc: { n: 'Low carb', prot: 1.1, d: 'Carbs about 1.5 g per kg, the extra calories go to fat. Fine if you prefer eating this way; hard sessions can feel flatter.' },
+    keto: { n: 'Keto', prot: 1.1, d: 'Carbs fixed at 30 g. Not ideal for high-volume lifting; read the note in the results.' },
+  };
+
   const UP = ['chest', 'lats', 'upperBack', 'traps', 'frontDelts', 'sideDelts', 'rearDelts', 'biceps', 'triceps'];
   const LOW = ['quads', 'hamstrings', 'glutes', 'calves', 'abs'];
   const PUSH = ['chest', 'frontDelts', 'sideDelts', 'triceps'];
@@ -304,6 +326,7 @@
       ? ((num('height-ft') ?? 5) * 12 + (num('height-in') ?? 10)) * 2.54
       : (num('height-cm') ?? 178);
     const trainDays = WEEK.filter(d => $('day-' + d).checked);
+    const steps = Math.min(30000, Math.max(500, num('steps') ?? 6500));
     return {
       cardio: readCardio(units),
       name: $('name').value.trim(),
@@ -312,9 +335,10 @@
       bf: num('bf'), exp: $('exp').value, style: $('style').value, trainDays, days: trainDays.length, session: +$('session').value,
       double: $('double').value, pmSession: +$('pm-session').value,
       trainMin: +$('session').value + ($('double').value !== 'off' ? +$('pm-session').value : 0),
-      activity: +$('activity').value,
+      steps, activity: stepFactor(steps),
       goal: document.querySelector('input[name="goal"]:checked').value,
       rate: +$('rate').value, goalBf: num('goal-bf'),
+      macro: (document.querySelector('input[name="macro"]:checked') || {}).value || 'bal',
       weak: [...document.querySelectorAll('#weak-list input:checked')].map(i => i.value),
       equip: [...document.querySelectorAll('#equip-list input:checked')].map(i => i.value),
     };
@@ -325,8 +349,9 @@
     set('name', s.name || ''); set('sex', s.sex); set('age', s.age); set('units', s.units);
     set('weight', s.weightRaw); set('height-cm', s.heightCmRaw); set('height-ft', s.heightFt); set('height-in', s.heightIn);
     $('bf').value = s.bf ?? ''; set('exp', s.exp); set('style', s.style || 'std'); set('session', s.session);
-    set('activity', s.activity); set('rate', s.rate); set('double', s.double || 'off'); set('pm-session', s.pmSession); $('goal-bf').value = s.goalBf ?? '';
+    $('steps').value = s.steps ?? OLD_ACTIVITY_STEPS[String(s.activity)] ?? 6500; set('rate', s.rate); set('double', s.double || 'off'); set('pm-session', s.pmSession); $('goal-bf').value = s.goalBf ?? '';
     if (s.goal && $('goal-' + s.goal)) $('goal-' + s.goal).checked = true;
+    const mc = $('macro-' + (s.macro || 'bal')); if (mc) mc.checked = true;
     document.querySelectorAll('#weak-list input').forEach(i => { i.checked = (s.weak || []).includes(i.value); });
     setTrainDays(Array.isArray(s.trainDays) && s.trainDays.length ? s.trainDays : (DEFAULT_DAYS[s.days] || DEFAULT_DAYS[4]));
     renderCardioRows(Array.isArray(s.cardio) ? s.cardio : [], s.units || 'metric');
@@ -362,9 +387,14 @@
           target = floor;
           weeklyKg = (tdee - target) * 7 / 7700;
           ratePct = -(weeklyKg / kg * 100);
+          label = `Lose about ${(weeklyKg / kg * 100).toFixed(2)}% of body weight per week (held back by the minimum-intake floor)`;
         }
       }
-      if (p.rate >= 1 && p.bf && ((p.sex === 'm' && p.bf < 12) || (p.sex === 'f' && p.bf < 20))) {
+      if (p.rate >= 1.25) {
+        warnings.push({ bad: false, t: 'Aggressive cut: keep it short', d: 'Losing 1.25% of body weight a week works best for 4 to 6 weeks at a time and when you have body fat to spare. Expect more hunger, flatter workouts and a higher risk of losing muscle. Keep protein high, keep lifting heavy, and take a 1-week break at maintenance after each block.' });
+        if (p.bf && ((p.sex === 'm' && p.bf < 15) || (p.sex === 'f' && p.bf < 24))) warnings.push({ bad: true, t: 'Aggressive cut at low body fat', d: 'At your body fat this speed puts muscle at real risk. Use Standard (0.75%) or Fast (1%) instead.' });
+        if (!lbm) warnings.push({ bad: false, t: 'Add your body fat %', d: 'Without it the app cannot protect a minimum energy intake, so check that the calories above are not too low for you.' });
+      } else if (p.rate >= 1 && p.bf && ((p.sex === 'm' && p.bf < 12) || (p.sex === 'f' && p.bf < 20))) {
         warnings.push({ bad: true, t: 'Fast cut at low body fat', d: 'When you are already lean, 1%/week risks losing muscle. 0.5–0.75%/week keeps more of it.' });
       }
     } else if (p.goal === 'bulk') {
@@ -384,17 +414,27 @@
     if (target < absFloor) { target = absFloor; warnings.push({ bad: true, t: 'Very low intake', d: `Calories were set to the minimum of ${absFloor} kcal. Talk to a doctor or dietitian before eating less.` }); }
     target = Math.round(target / 10) * 10;
 
+    const style = MACRO_STYLES[p.macro] ? p.macro : 'bal';
     let protein;
     if (p.goal === 'cut') protein = lbm ? 2.6 * lbm : (highBf ? 1.8 : 2.2) * kg;
     else if (lbm && highBf) protein = 2.4 * lbm;
     else protein = (p.goal === 'bulk' ? 1.8 : 2.0) * kg;
-    protein = r5(protein);
+    protein = r5(Math.min(protein * MACRO_STYLES[style].prot, 3.0 * kg));
 
     const minFat = (p.goal === 'cut' ? 0.5 : 0.7) * kg;
-    let fat = Math.max(minFat, (p.goal === 'cut' ? 0.22 : 0.27) * target / 9);
-    let carbs = (target - protein * 4 - fat * 9) / 4;
-    if (carbs < 1.5 * kg) { fat = minFat; carbs = (target - protein * 4 - fat * 9) / 4; }
+    let fat, carbs;
+    if (style === 'lc' || style === 'keto') {
+      carbs = style === 'keto' ? 30 : 1.5 * kg;
+      fat = (target - protein * 4 - carbs * 4) / 9;
+      if (fat < minFat) { fat = minFat; carbs = (target - protein * 4 - fat * 9) / 4; }
+    } else {
+      const fatCal = style === 'hc' ? 0.15 : (p.goal === 'cut' ? 0.22 : 0.27);
+      fat = Math.max(minFat, fatCal * target / 9);
+      carbs = (target - protein * 4 - fat * 9) / 4;
+      if (carbs < 1.5 * kg) { fat = minFat; carbs = (target - protein * 4 - fat * 9) / 4; }
+    }
     fat = r5(fat); carbs = Math.max(0, r5(carbs));
+    if (style === 'keto') warnings.push({ bad: false, t: 'Keto and heavy lifting', d: 'Evidence for muscle gain on very low carbs is limited, and high-volume sessions often feel flat for the first 2 to 4 weeks. Keep sodium, potassium and magnesium up. If training suffers, switch to Low carb and eat some carbs around your session.' });
 
     const ea = lbm ? (target - exKcalDay) / lbm : null;
     let cutPlan = null;
@@ -402,13 +442,23 @@
       const goalW = lbm / (1 - p.goalBf / 100);
       const toLose = kg - goalW;
       const weeks = toLose / Math.max(weeklyKg, 0.05);
-      const breaks = Math.floor(weeks / 6);
+      const breaks = Math.floor(weeks / (p.rate >= 1.25 ? 4 : 6));
       cutPlan = { goalW, toLose, weeks: Math.ceil(weeks), breaks, total: Math.ceil(weeks) + breaks };
       if (cutPlan.total > 20) warnings.push({ bad: false, t: 'Long cut ahead', d: 'Split it into blocks of 12–16 weeks with 4–8 weeks at maintenance in between.' });
     }
+    let after = null;
+    if (p.goal === 'cut') {
+      const wAfter = cutPlan ? cutPlan.goalW : kg;
+      const r10 = x => Math.round(x / 10) * 10;
+      after = { wAfter, rows: [
+        { name: 'Maintain', kcal: r10(tdee), rate: 0, protein: r5(2.0 * wAfter) },
+        { name: 'Maingain', kcal: r10(tdee + [150, 100, 75][e]), rate: [0.25, 0.15, 0.1][e], protein: r5(2.0 * wAfter), goal: 'main' },
+        { name: 'Lean bulk', kcal: r10(tdee * (1 + [0.15, 0.10, 0.06][e])), rate: [0.5, 0.35, 0.2][e], protein: r5(1.8 * wAfter), goal: 'bulk' },
+      ] };
+    }
     const meals = 4;
     return { kg, lbm, bmr, method, factor, tdee, cardioDay, cardioWeek, target, protein, fat, carbs, ratePct, weeklyKg, label, warnings, ea,
-      fibre: r0(target * 14 / 1000), perMeal: r5(Math.min(protein / meals, Math.max(0.4 * kg, 25))), meals, cutPlan,
+      styleName: MACRO_STYLES[style].n, after, fibre: r0(target * 14 / 1000), perMeal: r5(Math.min(protein / meals, Math.max(0.4 * kg, 25))), meals, cutPlan,
       waterRest: 0.035 * kg, waterTrain: 0.035 * kg + 0.75 * p.trainMin / 60 };
   }
 
@@ -584,6 +634,20 @@
         Goal weight at ${p.goalBf}% body fat ≈ <b style="display:inline">${wUnit(p, n.cutPlan.goalW)}</b> (lose ≈ ${wUnit(p, n.cutPlan.toLose)}).
         At this rate that takes about <b style="display:inline">${n.cutPlan.weeks} weeks</b>${n.cutPlan.breaks ? `, plus ${n.cutPlan.breaks} one-week diet break${n.cutPlan.breaks > 1 ? 's' : ''} at maintenance = <b style="display:inline">${n.cutPlan.total} weeks</b> total` : ''}.
       </div>` : '';
+    const afterBlock = n.after ? `
+      <div>
+        <h3>After the cut</h3>
+        <p class="hint" style="margin:2px 0 10px">Calories below assume the same training and activity as now. Your lean mass should be about the same, so maintenance stays close to today's number; re-check it with your weekly average weight.</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Next phase</th><th>Calories</th><th>Weight / week</th><th>Protein</th><th></th></tr></thead>
+          <tbody>${n.after.rows.map(r => `<tr><td>${r.name}</td><td class="num">${fmt(r.kcal)} kcal</td><td class="num">${r.rate ? '+' + wUnit(p, n.after.wAfter * r.rate / 100, 2) : 'steady'}</td><td class="num">≈ ${r.protein} g</td><td>${r.goal ? `<button type="button" class="btn small ghost" data-set-goal="${r.goal}">Use this</button>` : ''}</td></tr>`).join('')}</tbody></table></div>
+        <ul class="tight">
+          <li>Step calories up over 1 to 2 weeks (about 100–200 kcal a week, mostly carbs) instead of jumping straight to the new number.</li>
+          <li>Hold maintenance for 2 to 4 weeks first if you feel run down, then move to Maingain or a Lean bulk.</li>
+          <li>Keep training: switch the goal above and the plan gives every muscle its full weekly sets back (cut plans trim non-priority muscles by about 15%). Start a fresh 6-week block at about 3 RIR with last block's weights, then keep using double progression and add weight whenever you reach the top of the rep range.</li>
+          <li>Strength should climb as calories return. If weight rises faster than the rate above, remove 100–150 kcal.</li>
+        </ul>
+      </div>` : '';
     return `
       <div class="split-head"><h2>${who} ${goalName} targets</h2><p>${esc(n.label)}</p></div>
       <div class="kpis">
@@ -616,6 +680,8 @@
           <tbody>
             <tr><td>Resting burn (BMR)</td><td class="num">${fmt(n.bmr)} kcal</td></tr>
             <tr><td>Formula</td><td>${esc(n.method)}</td></tr>
+            <tr><td>Macro style</td><td>${esc(n.styleName)}</td></tr>
+            <tr><td>Daily steps</td><td class="num">${fmt(p.steps)}</td></tr>
             <tr><td>Activity multiplier</td><td class="num">× ${n.factor.toFixed(2)}</td></tr>
             ${n.cardioWeek ? `<tr><td>Cardio (${fmt(n.cardioWeek)} kcal/week)</td><td class="num">+ ${fmt(n.cardioDay)} kcal/day</td></tr>` : ''}
             <tr><td>Maintenance (TDEE)</td><td class="num">${fmt(n.tdee)} kcal</td></tr>
@@ -632,11 +698,12 @@
         </ul></div>
         <div><h3>Habits that matter</h3><ul class="tight">
           <li>Sleep 7–9 hours; no caffeine within ~9 h of bed (13 h for a big pre-workout).</li>
-          <li>${p.goal === 'cut' ? '8,000–12,000 steps a day; take a 1-week diet break at maintenance every 6–8 weeks.' : '7,000–10,000 steps a day plus 1–2 short, easy cardio sessions per week.'}</li>
+          <li>${p.goal === 'cut' ? `8,000–12,000 steps a day; take a 1-week diet break at maintenance every ${p.rate >= 1.25 ? '4' : '6–8'} weeks.` : '7,000–10,000 steps a day plus 1–2 short, easy cardio sessions per week.'}</li>
           <li>Eat protein and vegetables first in a meal; a 10-minute walk after big meals helps blood sugar.</li>
           <li>Keep alcohol low — it blunts muscle building and sleep.</li>
         </ul></div>
-      </div>`;
+      </div>
+      ${afterBlock}`;
   }
 
   function renderTraining(p, plan) {
@@ -649,6 +716,7 @@
     const weakNames = p.weak.map(w => w === 'upperChest' ? 'Upper chest' : MUSCLE_LABEL[w]);
     const notes = [];
     if (p.weak.length > 4) notes.push({ soft: true, t: 'Lots of priorities', d: 'Priority muscles are never trimmed and each gets extra sets, so sessions get long and recovery gets harder. If it feels like too much, keep 3 to 4 priorities or add a training day.' });
+    if (p.goal === 'cut') notes.push({ soft: true, t: 'Cut volume', d: 'While you cut, muscles that are not priorities get about 15% fewer weekly sets. Priority muscles keep full volume. Switch the goal to Maingain or Bulk to get full volume back.' });
     if (plan.trimmed) notes.push({ soft: true, t: 'Some sets were trimmed to fit your session length', d: 'Non-priority muscles lost a few sets. Choose a longer session or more days to train everything at full volume.' });
     if (plan.overTime.length) notes.push({ soft: true, t: 'Some sessions run over your time limit', d: `${plan.overTime.join(', ')} keep minimum volume for every muscle, so they run a bit long. Pick fewer priorities, a longer session, or more days.` });
     if (plan.lost.length) notes.push({ t: 'Per-session cap reached', d: `${plan.lost.map(m => MUSCLE_LABEL[m]).join(', ')} hit the limit of about 8 useful sets per session, so the extra sets were dropped. More training days would spread them out.` });
@@ -764,6 +832,9 @@
       bulk: 'Maximise muscle gain with a controlled surplus. Best when you start reasonably lean.',
     };
     $('goal-hint').textContent = hints[p.goal];
+    const pre = $('steps-preset'); pre.value = [...pre.options].some(o => o.value === String(p.steps)) ? String(p.steps) : '';
+    $('steps-hint').textContent = `Counts as × ${p.activity.toFixed(2)} on your resting burn, before lifting and cardio. Use your weekly average and leave out the treadmill sessions you add below.`;
+    $('macro-hint').textContent = (MACRO_STYLES[p.macro] || MACRO_STYLES.bal).d;
     const n = p.weak.length;
     document.querySelectorAll('#weak-list input').forEach(i => { i.disabled = !i.checked && n >= MAX_WEAK; });
     $('equip-count').textContent = `${p.equip.length}/${ALL_EQUIP.length}`;
@@ -859,6 +930,13 @@
     $('form').addEventListener('input', update);
     $('form').addEventListener('change', update);
     $('form').addEventListener('submit', ev => ev.preventDefault());
+    $('panel-nutrition').addEventListener('click', ev => {
+      const b = ev.target.closest('[data-set-goal]');
+      if (!b) return;
+      const g = $('goal-' + b.dataset.setGoal);
+      if (g) { g.checked = true; update(); toast(`Switched to ${b.dataset.setGoal === 'bulk' ? 'Bulk' : 'Maingain'} targets`); }
+    });
+    $('steps-preset').addEventListener('change', () => { if ($('steps-preset').value) $('steps').value = $('steps-preset').value; });
     $('tab-nutrition').addEventListener('click', () => selectTab('nutrition'));
     $('tab-training').addEventListener('click', () => selectTab('training'));
 

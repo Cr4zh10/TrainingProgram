@@ -91,6 +91,8 @@ fieldset.weak { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
 .chip input:disabled + span { opacity: .45; }
 
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+fieldset.macro { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
+fieldset.macro .chip input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--surface); }
 fieldset.daypick { border: 0; padding: 0; margin: 0; }
 fieldset.daypick legend { margin-bottom: 6px; }
 .days-chips { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
