@@ -8,6 +8,12 @@ A free, single-page website that builds a personal plan for you and your friends
 - **Cardio sessions** on any day: treadmill with your own speed and incline (ACSM walking/running equations), or bike, elliptical, stair climber and rower by intensity. Cardio calories are added to the daily target.
 - **Saved lifters** (stored in your own browser) and **share links** so each friend can open their own plan.
 
+- **Macro styles** (balanced, high protein, high carb, low carb, keto), an optional **lifting-day vs rest-day calorie split**, and a **steps** box instead of fixed activity levels.
+- **Cut speeds** up to 1.25%/week and an **After the cut** plan (maintain, maingain or lean bulk).
+- **Up to 6 priority muscles** (including traps), a **Swap** button on every exercise, and a **joint-friendly mode** (knees, shoulders, lower back, elbows).
+- **Progress tab**: log weigh-ins, see the trend and apply a suggested calorie change.
+- **Light/dark theme** toggle and a **Vietnamese** translation (exercise names, coaching tips and equipment names stay in English). Add another language by writing a dictionary like `VI` in `app.js`.
+
 No sign-up, no server, no build step — just `index.html`, `styles.css` and `app.js`.
 
 ## Put it online with GitHub Pages

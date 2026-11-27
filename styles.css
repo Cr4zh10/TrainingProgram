@@ -220,3 +220,23 @@ ul.tight { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; font-si
   .out[hidden] { display: grid !important; }
   .day { break-inside: avoid; }
 }
+
+/* Swap button and joint chips */
+.swap { font: 600 .68rem var(--font-body); text-transform: uppercase; letter-spacing: .04em; border: 1px solid var(--line); background: var(--surface); color: var(--accent); border-radius: 6px; padding: 1px 7px; margin-left: 8px; cursor: pointer; vertical-align: 1px; }
+.swap::before { content: "\21C4  "; }
+.swap:hover { border-color: var(--accent); }
+.swap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.joints .chip input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+@media print { .swap { display: none !important; } }
+
+/* Progress tracker */
+.pg-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.pg-add .btn { padding: 9px 14px; }
+.out svg text { fill: var(--muted); font: 11px var(--font-mono); }
+@media (max-width: 420px) { .pg-add { grid-template-columns: 1fr 1fr; } .pg-add .btn { grid-column: span 2; } }
+/* printing is always light, whatever the theme */
+@media print {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) { --bg: #fff; --surface: #fff; --surface-2: #f6f8f9; --ink: #14181c; --muted: #5c6670; --line: #d7dde2; --accent: #1f5fbf; --red: #c8322a; --green: #2e8b57; --yellow: #d9a514; --warn-bg: #fff4dc; --bad-bg: #fde8e6; color-scheme: light; }
+}
+
+.lang-select { width: auto; padding: 7px 10px; font-size: .85rem; }

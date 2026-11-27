@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
 <link rel="stylesheet" href="styles.css">
+<script>try{var t=localStorage.getItem("pp_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
 </head>
 <body>
 <header class="top">
@@ -21,6 +22,8 @@
       </div>
     </div>
     <div class="top-actions">
+      <select id="lang" class="lang-select" aria-label="Language"><option value="en">English</option><option value="vi">Tiếng Việt</option></select>
+      <button type="button" id="btn-theme" class="btn ghost">Theme: Auto</button>
       <button type="button" id="btn-share" class="btn ghost">Copy share link</button>
       <button type="button" id="btn-print" class="btn ghost">Print plan</button>
     </div>
@@ -74,7 +77,7 @@
           <div id="day-list" class="chips days-chips"></div>
         </fieldset>
         <div class="field span2"><label for="session" id="session-label">Session length</label>
-          <select id="session"><option value="45">45 min</option><option value="60">60 min</option><option value="75" selected>75 min</option><option value="90">90 min</option></select></div>
+          <select id="session"><option value="45">45 min</option><option value="60">60 min</option><option value="75" selected>75 min</option><option value="90">90 min</option><option value="120">120 min</option><option value="0">No limit</option></select></div>
         <div class="field span2"><label for="double">Train twice a day?</label>
           <select id="double">
             <option value="off" selected>No — one session per day</option>
@@ -82,7 +85,7 @@
             <option value="small">Yes — short evening session for delts, arms, calves &amp; abs</option>
           </select></div>
         <div class="field double-only" hidden><label for="pm-session">Evening session</label>
-          <select id="pm-session"><option value="20">20 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></div>
+          <select id="pm-session"><option value="20">20 min</option><option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="0">No limit</option></select></div>
         <div class="field span2"><label for="steps">Daily steps outside the gym</label>
           <div class="pair"><input id="steps" type="number" min="500" max="30000" step="500" inputmode="numeric" value="6500"><select id="steps-preset" aria-label="Quick pick"><option value="">Quick pick…</option><option value="2500">2,500 · mostly sitting</option><option value="4000">4,000 · desk job</option><option value="6500">6,500 · light</option><option value="8000">8,000 · average</option><option value="10000">10,000 · active</option><option value="12500">12,500 · very active</option><option value="15000">15,000 · on your feet all day</option><option value="20000">20,000 · labour job</option></select></div>
           <p class="hint" id="steps-hint"></p></div>
@@ -90,6 +93,10 @@
       <fieldset class="weak">
         <legend>Weak points to bring up <span class="opt">pick up to 6</span></legend>
         <div id="weak-list" class="chips"></div>
+      </fieldset>
+      <fieldset class="weak joints">
+        <legend>Joint-friendly mode <span class="opt">skip exercises that bother…</span></legend>
+        <div id="joint-list" class="chips"></div>
       </fieldset>
     </section>
 
@@ -122,6 +129,8 @@
         <div class="chips"><label class="chip"><input type="radio" name="macro" id="macro-bal" value="bal" checked><span>Balanced</span></label><label class="chip"><input type="radio" name="macro" id="macro-hp" value="hp"><span>High protein</span></label><label class="chip"><input type="radio" name="macro" id="macro-hc" value="hc"><span>High carb</span></label><label class="chip"><input type="radio" name="macro" id="macro-lc" value="lc"><span>Low carb</span></label><label class="chip"><input type="radio" name="macro" id="macro-keto" value="keto"><span>Keto</span></label></div>
         <p class="hint" id="macro-hint"></p>
       </fieldset>
+      <div class="field"><label for="cycle">Calories by day type</label>
+        <select id="cycle"><option value="off" selected>Same every day</option><option value="on">Higher on lifting days, lower on rest days</option></select></div>
     </section>
 
     <details class="block equip">
@@ -129,6 +138,7 @@
       <p class="hint">Untick anything your gym doesn't have. The plan only uses ticked equipment.</p>
       <div id="equip-list"></div>
     </details>
+    <input type="hidden" id="swaps" value="{}"><input type="hidden" id="adjust" value="0"><input type="hidden" id="adjust-date" value="">
   </form>
 
   <!-- ================= RESULTS ================= -->
@@ -136,10 +146,12 @@
     <div class="tabs" role="tablist">
       <button type="button" role="tab" id="tab-nutrition" aria-selected="true" aria-controls="panel-nutrition" class="tab">Calories &amp; macros</button>
       <button type="button" role="tab" id="tab-training" aria-selected="false" aria-controls="panel-training" class="tab">Training plan</button>
+      <button type="button" role="tab" id="tab-progress" aria-selected="false" aria-controls="panel-progress" class="tab">Progress</button>
     </div>
 
     <div id="panel-nutrition" role="tabpanel" aria-labelledby="tab-nutrition" class="panel out"></div>
     <div id="panel-training" role="tabpanel" aria-labelledby="tab-training" class="panel out" hidden></div>
+    <div id="panel-progress" role="tabpanel" aria-labelledby="tab-progress" class="panel out" hidden></div>
   </section>
 </main>
 
@@ -148,6 +160,6 @@
 </footer>
 
 <div id="toast" class="toast" role="status" hidden></div>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

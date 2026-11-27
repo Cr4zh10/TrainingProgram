@@ -159,6 +159,17 @@
     abs: { p: ['ab_mach', 'cable_crunch', 'knee_raise', 'db_crunch'], s: ['knee_raise', 'cable_crunch', 'db_crunch'] },
   };
 
+  // Joint-friendly mode: exercises that commonly aggravate a joint (a convenience filter, not medical advice).
+  const JOINTS = [['knee', 'Knees'], ['shoulder', 'Shoulders'], ['back', 'Lower back'], ['elbow', 'Elbows']];
+  const JOINT_NAME = Object.fromEntries(JOINTS);
+  const JOINT_TAGS = {
+    knee: ['hack', 'smith_squat', 'bss', 'goblet'],
+    shoulder: ['sh_press', 'db_sh_press', 'smith_sh', 'dip_assist', 'db_pullover', 'pullover_m', 'oh_cable', 'db_oh_ext', 'cable_y', 'db_fly'],
+    back: ['db_rdl', 'smith_rdl', 'back_ext_ham', 'back_ext_glute'],
+    elbow: ['db_skull', 'db_oh_ext', 'oh_cable', 'dip_assist'],
+  };
+  Object.entries(JOINT_TAGS).forEach(([t, ids]) => ids.forEach(id => { (EX[id].j = EX[id].j || []).push(t); }));
+
   // ---------------------------------------------------------------- Muscles & volume
   const MUSCLES = [
     ['chest', 'Chest'], ['lats', 'Lats (width)'], ['upperBack', 'Upper back'], ['traps', 'Traps'], ['quads', 'Quads'],
@@ -253,15 +264,283 @@
     return { met, kcal, name, vigorous: met >= 6 };
   }
 
+  // ---------------------------------------------------------------- Languages
+  // The page is written in English. Another language is a dictionary of exact phrases plus patterns for sentences
+  // that contain numbers or names; the screen text is translated after it is drawn, and anything without a
+  // translation (exercise names and coaching tips, equipment names) stays in English.
+  // ---------------------------------------------------------------- Vietnamese
+  const wkVi = s => s.replace(/ \/ week/g, ' / tuần');
+  const SESS_VI = { 'Full body': 'Toàn thân', Upper: 'Thân trên', Lower: 'Thân dưới', Push: 'Đẩy', Pull: 'Kéo', Legs: 'Chân' };
+  const DAY_VI = { Mon: 'T2', Tue: 'T3', Wed: 'T4', Thu: 'T5', Fri: 'T6', Sat: 'T7', Sun: 'CN' };
+  const VI = {
+    exact: {
+      'Calories, macros and a weak-point training plan built around our gym\'s machines.': 'Calo, macro và giáo án tập trung vào điểm yếu, xây dựng theo máy móc của phòng tập.',
+      'Copy share link': 'Sao chép liên kết chia sẻ', 'Print plan': 'In giáo án', 'Language': 'Ngôn ngữ',
+      'Theme: Auto': 'Giao diện: Tự động', 'Theme: Light': 'Giao diện: Sáng', 'Theme: Dark': 'Giao diện: Tối',
+      // lifter
+      'Lifter': 'Người tập', 'Saved lifters': 'Người tập đã lưu', 'Saved lifters…': 'Người tập đã lưu…', 'Save': 'Lưu', 'Delete': 'Xóa', 'Remove': 'Xóa',
+      'Name': 'Tên', 'e.g. Alex': 'ví dụ: Alex', 'Sex': 'Giới tính', 'Male': 'Nam', 'Female': 'Nữ', 'Age': 'Tuổi', 'Units': 'Đơn vị',
+      'Height (cm)': 'Chiều cao (cm)', 'Height (ft, in)': 'Chiều cao (ft, in)', 'Body weight (kg)': 'Cân nặng (kg)', 'Body weight (lb)': 'Cân nặng (lb)',
+      'Body fat %': 'Tỉ lệ mỡ cơ thể %', 'optional': 'không bắt buộc', 'e.g. 16': 'ví dụ: 16', 'e.g. 12': 'ví dụ: 12',
+      // training
+      'Training': 'Tập luyện', 'Training experience': 'Kinh nghiệm tập',
+      'Beginner — under 1 year of consistent lifting': 'Người mới — dưới 1 năm tập đều đặn',
+      'Intermediate — 1 to 3 years': 'Trung bình — 1 đến 3 năm',
+      'Advanced — 3+ years, close to your potential': 'Nâng cao — trên 3 năm, gần chạm tiềm năng',
+      'Training style': 'Phong cách tập',
+      'Standard — 2–4 sets per exercise, effort builds over the block': 'Tiêu chuẩn — 2–4 set mỗi bài, cường độ tăng dần theo chu kỳ',
+      'Science-based — 2 all-out sets per exercise, more variety': 'Theo khoa học — 2 set hết sức mỗi bài, nhiều bài đa dạng hơn',
+      'Lifting days': 'Ngày tập tạ', 'tap to switch on/off ·': 'chạm để bật/tắt ·',
+      'Session length': 'Thời lượng buổi tập', 'Morning session': 'Buổi sáng', 'Evening session': 'Buổi tối', 'No limit': 'Không giới hạn',
+      'Train twice a day?': 'Tập hai buổi mỗi ngày?', 'No — one session per day': 'Không — mỗi ngày một buổi',
+      'Yes — split each day\'s volume into morning + evening': 'Có — chia khối lượng mỗi ngày thành buổi sáng + buổi tối',
+      'Yes — short evening session for delts, arms, calves & abs': 'Có — buổi tối ngắn cho vai, tay, bắp chân & bụng',
+      'Daily steps outside the gym': 'Số bước chân mỗi ngày (ngoài phòng tập)', 'Quick pick': 'Chọn nhanh', 'Quick pick…': 'Chọn nhanh…',
+      '2,500 · mostly sitting': '2,500 · chủ yếu ngồi', '4,000 · desk job': '4,000 · làm văn phòng', '6,500 · light': '6,500 · nhẹ',
+      '8,000 · average': '8,000 · trung bình', '10,000 · active': '10,000 · năng động', '12,500 · very active': '12,500 · rất năng động',
+      '15,000 · on your feet all day': '15,000 · đứng/đi cả ngày', '20,000 · labour job': '20,000 · lao động chân tay',
+      'Weak points to bring up': 'Nhóm cơ cần cải thiện', 'pick up to 6': 'chọn tối đa 6',
+      'Joint-friendly mode': 'Chế độ thân thiện với khớp', 'skip exercises that bother…': 'bỏ các bài gây khó chịu cho…',
+      'Knees': 'Đầu gối', 'Shoulders': 'Vai', 'Lower back': 'Lưng dưới', 'Elbows': 'Khuỷu tay',
+      // muscles
+      'Chest': 'Ngực', 'Upper chest': 'Ngực trên', 'Lats (width)': 'Xô (độ rộng lưng)', 'Upper back': 'Lưng trên', 'Traps': 'Cầu vai',
+      'Quads': 'Đùi trước', 'Hamstrings': 'Đùi sau', 'Glutes': 'Mông', 'Front delts': 'Vai trước', 'Side delts': 'Vai giữa', 'Rear delts': 'Vai sau',
+      'Triceps': 'Tay sau', 'Biceps': 'Tay trước', 'Calves': 'Bắp chân', 'Abs': 'Bụng',
+      // cardio
+      'Cardio': 'Cardio', 'Add session': 'Thêm buổi', 'Day': 'Ngày', 'Machine': 'Máy', 'Minutes': 'Số phút', 'Intensity': 'Cường độ', 'Incline (%)': 'Độ dốc (%)',
+      'No cardio yet. Add a session, choose the day and machine, and set speed and incline for the treadmill. The calories are added to your daily target.': 'Chưa có cardio. Hãy thêm một buổi, chọn ngày và máy, rồi đặt tốc độ và độ dốc cho máy chạy bộ. Calo tiêu hao được cộng vào mục tiêu hằng ngày.',
+      'Easy': 'Nhẹ', 'Moderate': 'Vừa', 'Hard': 'Nặng',
+      'Treadmill': 'Máy chạy bộ', 'Stationary bike': 'Xe đạp tập', 'Elliptical': 'Máy elliptical', 'Stair climber': 'Máy leo cầu thang', 'Rowing machine': 'Máy chèo thuyền',
+      'Incline walk': 'Đi bộ lên dốc', 'Treadmill walk': 'Đi bộ trên máy', 'Treadmill run': 'Chạy trên máy',
+      // goal
+      'Goal': 'Mục tiêu', 'Cut speed': 'Tốc độ giảm mỡ',
+      'Gentle — 0.5% of body weight/week': 'Nhẹ — 0.5% cân nặng/tuần', 'Standard — 0.75%/week': 'Tiêu chuẩn — 0.75%/tuần', 'Fast — 1%/week': 'Nhanh — 1%/tuần',
+      'Aggressive — 1.25%/week (4–6 weeks at a time)': 'Quyết liệt — 1.25%/tuần (mỗi đợt 4–6 tuần)', 'Target body fat %': 'Tỉ lệ mỡ mục tiêu %',
+      'Lose fat while keeping muscle: moderate deficit, high protein, heavy training.': 'Giảm mỡ mà vẫn giữ cơ: thâm hụt vừa phải, nhiều đạm, tập nặng.',
+      'Build muscle slowly with almost no fat gain — good for most intermediates.': 'Tăng cơ từ từ, gần như không tăng mỡ — phù hợp với đa số người tập trung bình.',
+      'Maximise muscle gain with a controlled surplus. Best when you start reasonably lean.': 'Tăng cơ tối đa với mức dư calo có kiểm soát. Tốt nhất khi bạn bắt đầu ở mức khá gọn.',
+      'Macro style': 'Kiểu macro', 'Balanced': 'Cân bằng', 'High protein': 'Nhiều đạm', 'High carb': 'Nhiều carb', 'Low carb': 'Ít carb', 'Keto': 'Keto',
+      'Moderate fat, carbs fill the rest. A good default for most lifters.': 'Chất béo vừa phải, phần còn lại là carb. Mặc định phù hợp với đa số người tập.',
+      'About 20% more protein than the default, with carbs lowered to match. Helps with hunger on a cut; muscle gain levels off above roughly 2.2 g per kg of body weight.': 'Nhiều đạm hơn mặc định khoảng 20%, carb giảm tương ứng. Giúp đỡ đói khi giảm mỡ; lợi ích tăng cơ chững lại trên khoảng 2.2 g mỗi kg cân nặng.',
+      'Fat kept low and carbs high. Suits heavy volume, long sessions or a lot of daily activity.': 'Chất béo thấp, carb cao. Phù hợp khi tập khối lượng lớn, buổi tập dài hoặc vận động nhiều trong ngày.',
+      'Carbs about 1.5 g per kg, the extra calories go to fat. Fine if you prefer eating this way; hard sessions can feel flatter.': 'Carb khoảng 1.5 g mỗi kg, phần calo còn lại dồn vào chất béo. Ổn nếu bạn thích ăn kiểu này; buổi tập nặng có thể kém hứng.',
+      'Carbs fixed at 30 g. Not ideal for high-volume lifting; read the note in the results.': 'Carb cố định 30 g. Không lý tưởng cho tập khối lượng lớn; xem ghi chú trong phần kết quả.',
+      'Calories by day type': 'Calo theo loại ngày', 'Same every day': 'Như nhau mỗi ngày', 'Higher on lifting days, lower on rest days': 'Cao hơn ngày tập tạ, thấp hơn ngày nghỉ',
+      'Equipment': 'Thiết bị', 'Untick anything your gym doesn\'t have. The plan only uses ticked equipment.': 'Bỏ chọn những thứ phòng tập của bạn không có. Giáo án chỉ dùng thiết bị đã chọn.',
+      'Realleader machines — upper body': 'Máy Realleader — thân trên', 'Realleader machines — lower body': 'Máy Realleader — thân dưới', 'Cables and free weights': 'Cáp và tạ tự do',
+      'Calories & macros': 'Calo & macro', 'Training plan': 'Giáo án tập', 'Progress': 'Tiến độ',
+      'Targets come from published sports-science guidelines (ISSN, ACSM and hypertrophy meta-analyses). They are starting points: check your weekly average weight and adjust. Not medical advice — talk to a doctor if you have kidney, liver, heart or blood-sugar conditions.': 'Các mục tiêu dựa trên hướng dẫn khoa học thể thao đã công bố (ISSN, ACSM và các phân tích tổng hợp về phì đại cơ). Đây chỉ là điểm xuất phát: hãy theo dõi cân nặng trung bình mỗi tuần và điều chỉnh. Không phải lời khuyên y tế — hãy hỏi bác sĩ nếu bạn có bệnh về thận, gan, tim hoặc đường huyết.',
+      // nutrition results
+      'Calories / day': 'Calo / ngày', 'Protein': 'Protein', 'Carbs': 'Carb', 'Fat': 'Chất béo', 'Calories': 'Calo',
+      'Daily target': 'Mục tiêu hằng ngày', 'Amount': 'Số lượng', 'Expected change': 'Thay đổi dự kiến', 'Fibre': 'Chất xơ',
+      'Water — rest / training day': 'Nước — ngày nghỉ / ngày tập', 'Sodium': 'Natri', '≈ 2.3 g + 0.5–1 g per hour of heavy sweat': '≈ 2.3 g + 0.5–1 g mỗi giờ ra nhiều mồ hôi',
+      'Potassium': 'Kali', 'Creatine monohydrate': 'Creatine monohydrate', '3–5 g every day': '3–5 g mỗi ngày',
+      'How it was calculated': 'Cách tính', 'Resting burn (BMR)': 'Năng lượng nghỉ (BMR)', 'Formula': 'Công thức', 'Daily steps': 'Bước chân mỗi ngày',
+      'Activity multiplier': 'Hệ số vận động', 'Maintenance (TDEE)': 'Duy trì (TDEE)', 'Lean body mass': 'Khối lượng nạc', 'Energy availability': 'Năng lượng khả dụng',
+      'Katch–McArdle (uses your lean mass)': 'Katch–McArdle (dùng khối lượng nạc của bạn)',
+      'Slow gain — muscle with very little fat': 'Tăng chậm — tăng cơ, rất ít mỡ',
+      'How long to cut': 'Cần cắt bao lâu', 'total.': 'tổng cộng.',
+      'Calories raised to protect your hormones and muscle': 'Đã tăng calo để bảo vệ nội tiết và cơ bắp',
+      'Aggressive cut: keep it short': 'Cắt quyết liệt: nên giữ ngắn',
+      'Losing 1.25% of body weight a week works best for 4 to 6 weeks at a time and when you have body fat to spare. Expect more hunger, flatter workouts and a higher risk of losing muscle. Keep protein high, keep lifting heavy, and take a 1-week break at maintenance after each block.': 'Giảm 1.25% cân nặng mỗi tuần hiệu quả nhất trong 4–6 tuần mỗi đợt và khi bạn còn mỡ để giảm. Hãy chuẩn bị tinh thần đói hơn, buổi tập kém hứng hơn và nguy cơ mất cơ cao hơn. Giữ protein cao, tiếp tục tập nặng và nghỉ 1 tuần ở mức duy trì sau mỗi đợt.',
+      'Aggressive cut at low body fat': 'Cắt quyết liệt khi mỡ đã thấp',
+      'At your body fat this speed puts muscle at real risk. Use Standard (0.75%) or Fast (1%) instead.': 'Với tỉ lệ mỡ của bạn, tốc độ này đe dọa cơ bắp thật sự. Hãy dùng Tiêu chuẩn (0.75%) hoặc Nhanh (1%).',
+      'Add your body fat %': 'Hãy nhập tỉ lệ mỡ cơ thể',
+      'Without it the app cannot protect a minimum energy intake, so check that the calories above are not too low for you.': 'Thiếu thông tin này, ứng dụng không thể bảo vệ mức năng lượng tối thiểu, nên hãy tự kiểm tra xem calo ở trên có quá thấp với bạn không.',
+      'Fast cut at low body fat': 'Cắt nhanh khi mỡ đã thấp',
+      'When you are already lean, 1%/week risks losing muscle. 0.5–0.75%/week keeps more of it.': 'Khi đã gọn, 1%/tuần có nguy cơ mất cơ. 0.5–0.75%/tuần giữ được nhiều cơ hơn.',
+      'Very low intake': 'Mức ăn quá thấp', 'Long cut ahead': 'Đợt cắt còn dài',
+      'Split it into blocks of 12–16 weeks with 4–8 weeks at maintenance in between.': 'Hãy chia thành các đợt 12–16 tuần, xen kẽ 4–8 tuần ở mức duy trì.',
+      'Consider cutting or maingaining first': 'Nên cắt hoặc maingain trước',
+      'At your body-fat level, a bulk adds mostly fat and lowers insulin sensitivity. A cut or maingain will improve how you look and how you gain later.': 'Với mức mỡ hiện tại, bulk chủ yếu tăng mỡ và làm giảm độ nhạy insulin. Cắt hoặc maingain sẽ giúp bạn đẹp hơn và tăng cơ tốt hơn về sau.',
+      'Progress adjustment': 'Điều chỉnh theo tiến độ', 'Keto and heavy lifting': 'Keto và tập nặng',
+      'Evidence for muscle gain on very low carbs is limited, and high-volume sessions often feel flat for the first 2 to 4 weeks. Keep sodium, potassium and magnesium up. If training suffers, switch to Low carb and eat some carbs around your session.': 'Bằng chứng về tăng cơ khi ăn rất ít carb còn hạn chế, và các buổi tập khối lượng lớn thường kém hứng trong 2–4 tuần đầu. Hãy bổ sung đủ natri, kali và magie. Nếu buổi tập bị ảnh hưởng, hãy chuyển sang Ít carb và ăn một ít carb quanh buổi tập.',
+      'Calorie cycling is off for this plan': 'Giáo án này không dùng calo thay đổi theo ngày',
+      'Keto, or too little room above the minimum safe intake, means every day uses the same calories.': 'Do chọn Keto, hoặc do không còn đủ khoảng trống trên mức nạp an toàn tối thiểu, nên mọi ngày dùng cùng một mức calo.',
+      'Lifting days vs rest days': 'Ngày tập tạ so với ngày nghỉ', 'Day type': 'Loại ngày',
+      'Weekly check-in': 'Kiểm tra hằng tuần',
+      'Weigh every morning after the toilet; compare': 'Cân mỗi sáng sau khi đi vệ sinh; so sánh', 'weekly averages': 'trung bình theo tuần', ', not single days.': ', không so từng ngày riêng lẻ.',
+      'Losing slower than target for 2 weeks → cut 100–150 kcal (mostly carbs/fat) or add 2,000 steps.': 'Giảm chậm hơn mục tiêu 2 tuần → giảm 100–150 kcal (chủ yếu carb/chất béo) hoặc thêm 2,000 bước.',
+      'Gaining slower than target for 2–3 weeks → add 100–150 kcal.': 'Tăng chậm hơn mục tiêu 2–3 tuần → thêm 100–150 kcal.',
+      'Losing faster than target or strength dropping → add 100–150 kcal.': 'Giảm nhanh hơn mục tiêu hoặc sức mạnh đi xuống → thêm 100–150 kcal.',
+      'Gaining faster than target or waist growing quickly → remove 100–150 kcal.': 'Tăng nhanh hơn mục tiêu hoặc vòng eo tăng nhanh → bớt 100–150 kcal.',
+      'Measure your waist at the navel weekly and take photos monthly.': 'Đo vòng eo ngang rốn mỗi tuần và chụp ảnh mỗi tháng.',
+      'Habits that matter': 'Thói quen quan trọng',
+      'Sleep 7–9 hours; no caffeine within ~9 h of bed (13 h for a big pre-workout).': 'Ngủ 7–9 tiếng; không dùng caffeine trong khoảng 9 tiếng trước khi ngủ (13 tiếng với pre-workout mạnh).',
+      '8,000–12,000 steps a day; take a 1-week diet break at maintenance every 6–8 weeks.': '8,000–12,000 bước mỗi ngày; nghỉ diet 1 tuần ở mức duy trì mỗi 6–8 tuần.',
+      '8,000–12,000 steps a day; take a 1-week diet break at maintenance every 4 weeks.': '8,000–12,000 bước mỗi ngày; nghỉ diet 1 tuần ở mức duy trì mỗi 4 tuần.',
+      '7,000–10,000 steps a day plus 1–2 short, easy cardio sessions per week.': '7,000–10,000 bước mỗi ngày cùng 1–2 buổi cardio nhẹ, ngắn mỗi tuần.',
+      'Eat protein and vegetables first in a meal; a 10-minute walk after big meals helps blood sugar.': 'Ăn đạm và rau trước trong bữa; đi bộ 10 phút sau bữa lớn giúp ổn định đường huyết.',
+      'Keep alcohol low — it blunts muscle building and sleep.': 'Hạn chế rượu bia — nó làm giảm khả năng tăng cơ và chất lượng giấc ngủ.',
+      'After the cut': 'Sau giai đoạn cắt',
+      'Calories below assume the same training and activity as now. Your lean mass should be about the same, so maintenance stays close to today\'s number; re-check it with your weekly average weight.': 'Số calo bên dưới giả định bạn tập và vận động như hiện tại. Khối lượng nạc gần như giữ nguyên nên mức duy trì sẽ gần với con số hôm nay; hãy kiểm tra lại bằng cân nặng trung bình mỗi tuần.',
+      'Next phase': 'Giai đoạn tiếp theo', 'Weight / week': 'Cân nặng / tuần', 'Maintain': 'Duy trì', 'Maingain': 'Maingain', 'Lean bulk': 'Lean bulk (tăng nạc)', 'steady': 'giữ nguyên', 'Use this': 'Dùng mục này',
+      'Step calories up over 1 to 2 weeks (about 100–200 kcal a week, mostly carbs) instead of jumping straight to the new number.': 'Tăng calo dần trong 1–2 tuần (khoảng 100–200 kcal mỗi tuần, chủ yếu carb) thay vì nhảy thẳng lên con số mới.',
+      'Hold maintenance for 2 to 4 weeks first if you feel run down, then move to Maingain or a Lean bulk.': 'Nếu thấy mệt mỏi, hãy giữ mức duy trì 2–4 tuần trước, rồi chuyển sang Maingain hoặc Lean bulk.',
+      'Keep training: switch the goal above and the plan gives every muscle its full weekly sets back (cut plans trim non-priority muscles by about 15%). Start a fresh 6-week block at about 3 RIR with last block\'s weights, then keep using double progression and add weight whenever you reach the top of the rep range.': 'Tiếp tục tập: đổi mục tiêu ở trên và giáo án sẽ trả lại đủ số set mỗi tuần cho mọi nhóm cơ (giáo án cắt giảm khoảng 15% set của các nhóm không ưu tiên). Bắt đầu chu kỳ 6 tuần mới ở mức khoảng 3 RIR với mức tạ của chu kỳ trước, rồi tiếp tục tăng tiến kép và tăng tạ mỗi khi bạn đạt số lần lặp cao nhất trong khoảng.',
+      'Strength should climb as calories return. If weight rises faster than the rate above, remove 100–150 kcal.': 'Sức mạnh sẽ tăng khi calo quay lại. Nếu cân nặng tăng nhanh hơn tốc độ ở trên, hãy bớt 100–150 kcal.',
+      // training
+      'Every muscle 2× per week in two longer sessions.': 'Mỗi nhóm cơ tập 2 lần mỗi tuần trong hai buổi dài hơn.',
+      'Every muscle 3× per week — ideal when you can only train three days.': 'Mỗi nhóm cơ tập 3 lần mỗi tuần — lý tưởng khi bạn chỉ tập được ba ngày.',
+      'Every muscle 2× per week with short, focused sessions.': 'Mỗi nhóm cơ tập 2 lần mỗi tuần với các buổi ngắn, tập trung.',
+      'Every muscle 2× per week with more room for extra weak-point volume.': 'Mỗi nhóm cơ tập 2 lần mỗi tuần, còn nhiều chỗ cho khối lượng bổ sung ở điểm yếu.',
+      'Every muscle 2× per week; highest volume capacity for advanced lifters.': 'Mỗi nhóm cơ tập 2 lần mỗi tuần; khả năng chịu khối lượng cao nhất cho người tập nâng cao.',
+      'Full body ×2': 'Toàn thân ×2', 'Full body ×3': 'Toàn thân ×3', 'Upper / Lower': 'Thân trên / Thân dưới',
+      'Upper / Lower / Push / Pull / Legs': 'Trên / Dưới / Đẩy / Kéo / Chân', 'Push / Pull / Legs ×2': 'Đẩy / Kéo / Chân ×2',
+      'Pick at least 2 training days': 'Hãy chọn ít nhất 2 ngày tập', 'Choose your lifting days in the Training section (2 to 6 days).': 'Chọn ngày tập tạ trong mục Tập luyện (từ 2 đến 6 ngày).',
+      'These get extra weekly sets and go first in each session while you\'re fresh.': 'Các nhóm này được thêm set mỗi tuần và tập đầu buổi khi bạn còn khỏe.',
+      'No weak points picked': 'Chưa chọn nhóm cơ cần cải thiện', 'Choose up to six in the form to add extra volume to those muscles.': 'Hãy chọn tối đa sáu nhóm trong biểu mẫu để thêm khối lượng cho các nhóm đó.',
+      'Science-based style: 2 hard sets per exercise': 'Phong cách theo khoa học: 2 set nặng mỗi bài',
+      'Fewer sets per exercise but every set close to failure, with longer rests and more exercise variety per muscle. Weekly sets per muscle stay in the 10–20 range that research links to the most growth.': 'Ít set hơn mỗi bài nhưng mọi set đều gần mức thất bại, nghỉ lâu hơn và nhiều bài đa dạng hơn cho mỗi nhóm cơ. Số set mỗi tuần của mỗi nhóm cơ vẫn nằm trong khoảng 10–20 mà nghiên cứu cho là tăng cơ tốt nhất.',
+      'Two sessions on training days': 'Hai buổi vào ngày tập', 'Evening small-muscle sessions': 'Buổi tối cho nhóm cơ nhỏ',
+      'No time limit': 'Không giới hạn thời gian', 'Lots of priorities': 'Quá nhiều nhóm ưu tiên',
+      'Priority muscles are never trimmed and each gets extra sets, so sessions get long and recovery gets harder. If it feels like too much, keep 3 to 4 priorities or add a training day.': 'Các nhóm ưu tiên không bao giờ bị cắt bớt và mỗi nhóm được thêm set, nên buổi tập dài ra và phục hồi khó hơn. Nếu thấy quá tải, hãy giữ 3–4 nhóm ưu tiên hoặc thêm một ngày tập.',
+      'Cut volume': 'Khối lượng khi cắt', 'While you cut, muscles that are not priorities get about 15% fewer weekly sets. Priority muscles keep full volume. Switch the goal to Maingain or Bulk to get full volume back.': 'Khi đang cắt, các nhóm cơ không ưu tiên có ít hơn khoảng 15% số set mỗi tuần. Nhóm ưu tiên giữ nguyên khối lượng. Chuyển mục tiêu sang Maingain hoặc Bulk để lấy lại đủ khối lượng.',
+      'Some sets were trimmed to fit your session length': 'Một số set đã được cắt để vừa thời lượng buổi tập',
+      'Non-priority muscles lost a few sets. Choose a longer session or more days to train everything at full volume.': 'Các nhóm không ưu tiên bị mất vài set. Hãy chọn buổi tập dài hơn hoặc nhiều ngày hơn để tập đủ khối lượng cho mọi nhóm.',
+      'Some sessions run over your time limit': 'Một số buổi vượt quá giới hạn thời gian', 'Per-session cap reached': 'Đã chạm giới hạn mỗi buổi',
+      'Not enough different exercises': 'Không đủ bài tập khác nhau', 'Missing equipment': 'Thiếu thiết bị',
+      'Exercises that commonly aggravate these joints were skipped. This is a convenience filter, not medical advice: use a pain-free range, stop anything that hurts, and see a physio or doctor if pain persists.': 'Các bài thường gây khó chịu cho những khớp này đã được bỏ qua. Đây chỉ là bộ lọc tiện lợi, không phải lời khuyên y tế: hãy tập trong biên độ không đau, dừng bất cứ bài nào gây đau, và gặp bác sĩ hoặc chuyên gia vật lý trị liệu nếu còn đau.',
+      'Swapped exercises': 'Bài đã đổi', 'You changed some exercises. Swaps only apply while the same slot exists in the plan.': 'Bạn đã đổi một số bài. Việc đổi chỉ áp dụng khi vị trí đó vẫn còn trong giáo án.', 'Reset swaps': 'Đặt lại bài đã đổi',
+      'Swap': 'Đổi bài', 'Swap exercise': 'Đổi bài tập', 'Priority': 'Ưu tiên',
+      'Hard sets per muscle per week': 'Số set nặng mỗi nhóm cơ mỗi tuần',
+      'Direct sets only. Compound lifts add extra indirect work (pressing for triceps and front delts, rows for biceps, squats for glutes).': 'Chỉ tính set trực tiếp. Các bài compound còn cộng thêm tác động gián tiếp (đẩy cho tay sau và vai trước, kéo cho tay trước, squat cho mông).',
+      'Your week': 'Tuần của bạn', 'Rest': 'Nghỉ', 'No cardio added': 'Chưa thêm cardio',
+      'Add sessions in the Cardio section of the form. Incline walking and cycling are the easiest to recover from alongside lifting.': 'Hãy thêm buổi tập trong mục Cardio của biểu mẫu. Đi bộ lên dốc và đạp xe là hai loại dễ phục hồi nhất khi tập kèm tạ.',
+      ' · leg day: do it after lifting or 6+ h apart': ' · ngày tập chân: làm sau khi tập tạ hoặc cách ít nhất 6 giờ',
+      'Morning': 'Buổi sáng', 'Evening': 'Buổi tối', 'Evening · small muscles': 'Buổi tối · nhóm cơ nhỏ',
+      'Exercise': 'Bài tập', 'Sets': 'Set', 'Reps': 'Số lần', 'RIR': 'RIR',
+      '6-week block': 'Chu kỳ 6 tuần', 'Deload: half the sets, 3–4 RIR': 'Giảm tải: một nửa số set, 3–4 RIR', 'Deload: 1 set per exercise, 3 RIR': 'Giảm tải: 1 set mỗi bài, 3 RIR', '1–2 RIR: find your weights': '1–2 RIR: tìm mức tạ phù hợp',
+      'How to progress': 'Cách tăng tiến', 'Machine tips': 'Mẹo dùng máy',
+      'Double progression: hit the top of the rep range on every set, then add the smallest weight step (one pin or 2.5–5 kg plate).': 'Tăng tiến kép: đạt số lần lặp cao nhất của khoảng ở mọi set, rồi thêm mức tạ nhỏ nhất (một chốt hoặc đĩa 2.5–5 kg).',
+      'When set 1 reaches the top of the rep range, add the smallest weight step next session.': 'Khi set 1 đạt số lần lặp cao nhất của khoảng, hãy thêm mức tạ nhỏ nhất ở buổi sau.',
+      'On isolation exercises you can add a few lengthened partials (bottom half of the rep) after the last full rep.': 'Ở các bài isolation, bạn có thể thêm vài lần lặp một phần ở vị trí cơ giãn dài (nửa dưới của động tác) sau lần lặp đầy đủ cuối cùng.',
+      'RIR = reps in reserve: how many more clean reps you could have done.': 'RIR = số lần còn dư: bạn còn làm được thêm bao nhiêu lần đúng kỹ thuật.',
+      'Log every set. Keep the same exercises for the whole 6 weeks.': 'Ghi lại mọi set. Giữ nguyên các bài trong cả 6 tuần.',
+      'Warm up with 2–3 lighter ramp-up sets on the first exercise for each muscle.': 'Khởi động bằng 2–3 set nhẹ dần ở bài đầu tiên của mỗi nhóm cơ.',
+      'Set the seat so the machine\'s pivot lines up with your joint (elbow, knee or shoulder).': 'Chỉnh ghế để trục xoay của máy thẳng hàng với khớp của bạn (khuỷu tay, đầu gối hoặc vai).',
+      'Plate-loaded machines: add plates evenly to both sides; note your settings in your log.': 'Máy gắn đĩa: lắp đĩa đều hai bên; ghi lại cài đặt máy trong nhật ký.',
+      'Control the lowering for 2–3 s and use the full range, especially the stretched position.': 'Kiểm soát nhịp hạ trong 2–3 giây và dùng hết biên độ, nhất là ở vị trí cơ giãn.',
+      'Swap any exercise that hurts a joint — untick that machine and the plan updates.': 'Đổi bất kỳ bài nào gây đau khớp — bỏ chọn máy đó và giáo án sẽ tự cập nhật.',
+      // progress
+      'Progress tracker': 'Theo dõi tiến độ', 'Weigh in each morning; the app compares your trend with your target.': 'Cân mỗi sáng; ứng dụng so sánh xu hướng của bạn với mục tiêu.',
+      'Date': 'Ngày', 'Weight': 'Cân nặng', 'Add weigh-in': 'Thêm lần cân', 'Latest': 'Gần nhất', '7-day average': 'Trung bình 7 ngày', 'Change since first': 'Thay đổi từ lần đầu', 'Trend (4 weeks)': 'Xu hướng (4 tuần)',
+      'Add your first weigh-in': 'Hãy thêm lần cân đầu tiên',
+      'Weigh yourself every morning after the toilet, before eating. After two weeks the app can check your progress against your target and suggest a calorie change.': 'Hãy cân mỗi sáng sau khi đi vệ sinh, trước khi ăn. Sau hai tuần, ứng dụng có thể so tiến độ của bạn với mục tiêu và gợi ý điều chỉnh calo.',
+      'Keep logging': 'Tiếp tục ghi chép', 'Eat a little more': 'Ăn nhiều hơn một chút', 'Eat a little less': 'Ăn ít hơn một chút', 'Apply this change': 'Áp dụng thay đổi này', 'On track': 'Đúng tiến độ',
+      'It is already included in your targets.': 'Mức này đã được tính trong mục tiêu của bạn.', 'Reset to plan': 'Đặt lại theo giáo án',
+      'Entries are saved in this browser under the selected lifter. Single days jump around by 1 to 2 kg from water and food, so the trend matters more than any one weigh-in.': 'Dữ liệu được lưu trong trình duyệt này theo người tập đang chọn. Cân nặng từng ngày dao động 1–2 kg do nước và thức ăn, nên xu hướng quan trọng hơn bất kỳ lần cân nào.',
+      'Weight over time': 'Cân nặng theo thời gian',
+      // toasts
+      'Type a name first, then save.': 'Hãy nhập tên trước rồi lưu.', 'Saving is blocked in this browser.': 'Trình duyệt này đang chặn việc lưu.', 'Pick a saved lifter to delete.': 'Hãy chọn một người tập đã lưu để xóa.',
+      'Copy the link from the address bar.': 'Hãy sao chép liên kết từ thanh địa chỉ.', 'Link copied — send it to a friend.': 'Đã sao chép liên kết — hãy gửi cho bạn bè.',
+      'Enter a date and a weight.': 'Hãy nhập ngày và cân nặng.', 'That weight does not look right.': 'Cân nặng này có vẻ chưa đúng.', 'Weigh-in added': 'Đã thêm lần cân',
+      'Calories adjusted': 'Đã điều chỉnh calo', 'Adjustment reset': 'Đã đặt lại điều chỉnh', 'Swaps reset': 'Đã đặt lại bài đã đổi',
+    },
+    patterns: [
+      [/^(\d+) days?$/, '$1 ngày'], [/^(\d+) min$/, '$1 phút'], [/^~(\d+) min$/, '~$1 phút'], [/^([\d–]+) min$/, '$1 phút'], [/^(\d+) weeks$/, '$1 tuần'], [/^Week (\d)$/, 'Tuần $1'],
+      [/^Speed \((km\/h|mph)\)$/, 'Tốc độ ($1)'], [/^Weight \((kg|lb)\)$/, 'Cân nặng ($1)'], [/^Body weight \((kg|lb)\)$/, 'Cân nặng ($1)'],
+      [/^(Stationary bike|Elliptical|Stair climber|Rowing machine) \((easy|moderate|hard)\)$/, (m, n, l) => `${trStr(n)} (${{ easy: 'nhẹ', moderate: 'vừa', hard: 'nặng' }[l]})`],
+      [/^\+ (\d+) min cardio$/, '+ $1 phút cardio'], [/^\+ ([\d,]+) kcal\/day$/, '+ $1 kcal/ngày'], [/^Cardio \(([\d,]+) kcal\/week\)$/, 'Cardio ($1 kcal/tuần)'],
+      [/^(\d+) min · ([\d.]+) (mph|km\/h) · ([\d.]+)% incline$/, '$1 phút · $2 $3 · dốc $4%'],
+      [/^(\d+) min moderate and (\d+) min vigorous\. Health guidelines suggest 150–300 min of moderate or 75–150 min of vigorous activity per week\. These calories are already added to your daily calorie target\.$/, '$1 phút vừa và $2 phút nặng. Khuyến nghị sức khỏe là 150–300 phút vận động vừa hoặc 75–150 phút vận động nặng mỗi tuần. Số calo này đã được cộng vào mục tiêu calo hằng ngày.'],
+      [/^Cardio: (\d+) min\/week \(≈ ([\d,]+) kcal\)$/, 'Cardio: $1 phút/tuần (≈ $2 kcal)'],
+      [/^Counts as × ([\d.]+) on your resting burn, before lifting and cardio\. Use your weekly average and leave out the treadmill sessions you add below\.$/, 'Tính là × $1 trên năng lượng nghỉ, chưa tính tập tạ và cardio. Hãy dùng số trung bình mỗi tuần và không tính các buổi chạy bộ bạn thêm ở bên dưới.'],
+      [/^Your (Cut|Maingain|Bulk) targets$/, 'Mục tiêu $1 của bạn'], [/^(.+)'s (Cut|Maingain|Bulk) targets$/, 'Mục tiêu $2 của $1'],
+      [/^Lose about ([\d.]+)% of body weight per week \(held back by the minimum-intake floor\)$/, 'Giảm khoảng $1% cân nặng mỗi tuần (bị giới hạn bởi mức nạp tối thiểu)'],
+      [/^Lose about ([\d.]+)% of body weight per week$/, 'Giảm khoảng $1% cân nặng mỗi tuần'], [/^Gain about ([\d.]+)% of body weight per week$/, 'Tăng khoảng $1% cân nặng mỗi tuần'],
+      [/^kcal · maintenance ≈ ([\d,]+)$/, 'kcal · duy trì ≈ $1'], [/^([\d.]+) g\/kg body weight$/, '$1 g/kg cân nặng'],
+      [/^Calories from protein (\d+)%, carbs (\d+)%, fat (\d+)%$/, 'Calo từ protein $1%, carb $2%, chất béo $3%'],
+      [/^Protein (\d+)%$/, 'Protein $1%'], [/^Carbs (\d+)%$/, 'Carb $1%'], [/^Fat (\d+)%$/, 'Chất béo $1%'],
+      [/^([+−])([\d.]+) (kg|lb) \/ week \(([+−][\d.]+%)\)$/, '$1$2 $3 / tuần ($4)'], [/^Protein per meal \((\d+) meals\)$/, 'Protein mỗi bữa ($1 bữa)'],
+      [/^([\d.]+) g\+ \(fruit, veg, potatoes\)$/, '$1 g+ (trái cây, rau, khoai tây)'], [/^(\d+) kcal\/kg lean( — low)?$/, (m, n, low) => `${n} kcal/kg nạc${low ? ' — thấp' : ''}`],
+      [/^Goal weight at (\d+)% body fat ≈$/, 'Cân nặng mục tiêu ở mức $1% mỡ ≈'], [/^\(lose ≈ ([\d.]+ (?:kg|lb))\)\.\s+At this rate that takes about$/, '(giảm ≈ $1). Với tốc độ này mất khoảng'],
+      [/^, plus (\d+) one-week diet breaks? at maintenance =$/, ', cộng $1 tuần nghỉ diet ở mức duy trì ='],
+      [/^Eating ([\d,]+) kcal would leave less than 30 kcal per kg of lean mass after training \(low energy availability\)\. The target was raised to ([\d,]+) kcal, so fat loss will be a little slower\.$/, 'Ăn $1 kcal sẽ khiến năng lượng còn lại sau tập dưới 30 kcal mỗi kg khối lượng nạc (thiếu năng lượng khả dụng). Mục tiêu được nâng lên $2 kcal, nên giảm mỡ sẽ chậm hơn một chút.'],
+      [/^Calories were set to the minimum of (\d+) kcal\. Talk to a doctor or dietitian before eating less\.$/, 'Calo được đặt ở mức tối thiểu $1 kcal. Hãy hỏi bác sĩ hoặc chuyên gia dinh dưỡng trước khi ăn ít hơn.'],
+      [/^Your target includes ([+−]\d+) kcal a day from your weight log\. Reset it on the Progress tab\.$/, 'Mục tiêu của bạn đã gồm $1 kcal mỗi ngày từ nhật ký cân nặng. Hãy đặt lại ở tab Tiến độ.'],
+      [/^Protein and fat stay the same every day; carbs move with training\. Your weekly average is still ([\d,]+) kcal a day\. Cardio-only days count as rest days\.$/, 'Protein và chất béo giữ nguyên mỗi ngày; carb thay đổi theo buổi tập. Trung bình mỗi tuần của bạn vẫn là $1 kcal mỗi ngày. Ngày chỉ tập cardio được tính là ngày nghỉ.'],
+      [/^Lifting day \((\d+) per week\)$/, 'Ngày tập tạ ($1 ngày/tuần)'], [/^Rest day \((\d+) per week\)$/, 'Ngày nghỉ ($1 ngày/tuần)'],
+      [/^(\d)-day (.+)$/, (m, n, name) => `${n} ngày · ${trStr(name)}`],
+      [/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) · (.+)$/, (m, d, name) => `${DAY_VI[d]} · ${trStr(name)}`],
+      [/^(2 sessions · )?(\d+) sets · ~(\d+) min( \+ cardio)?$/, (m, two, s, mins, c) => `${two ? '2 buổi · ' : ''}${s} set · ~${mins} phút${c ? ' + cardio' : ''}`],
+      [/^Priority: (.+)$/, (m, l) => `Ưu tiên: ${trList(l)}`], [/^Joint-friendly mode: (.+)$/, (m, l) => `Chế độ thân thiện với khớp: ${trList(l)}`],
+      [/^Delts, arms, calves and abs move to a short evening session, so the morning session has more time for the big lifts\. Leave at least 6 hours between sessions and eat a protein meal \(≈ (\d+) g\) in between\.$/, 'Vai, tay, bắp chân và bụng chuyển sang buổi tối ngắn, nhờ đó buổi sáng có nhiều thời gian hơn cho các bài nặng. Cách nhau ít nhất 6 tiếng giữa hai buổi và ăn một bữa có protein (≈ $1 g) ở giữa.'],
+      [/^Each day's volume is shared between a morning and an evening session, so every set is done fresher\. Leave at least 6 hours between sessions and eat a protein meal \(≈ (\d+) g\) in between\.$/, 'Khối lượng mỗi ngày được chia cho buổi sáng và buổi tối, nên mọi set đều tập khi còn khỏe hơn. Cách nhau ít nhất 6 tiếng giữa hai buổi và ăn một bữa có protein (≈ $1 g) ở giữa.'],
+      [/^Nothing is trimmed for time\. Sessions average about (\d+) min, the longest about (\d+) min\.( Sessions over about 2 hours usually mean the late sets are done tired; consider another training day, fewer priorities, or splitting the day into two sessions\.)?$/, (m, a, l, long) => `Không có set nào bị cắt vì thời gian. Buổi tập trung bình khoảng ${a} phút, buổi dài nhất khoảng ${l} phút.${long ? ' Buổi tập trên khoảng 2 tiếng thường khiến các set cuối làm trong lúc mệt; hãy cân nhắc thêm một ngày tập, bớt nhóm ưu tiên hoặc chia ngày đó thành hai buổi.' : ''}`],
+      [/^(.+) keep minimum volume for every muscle, so they run a bit long\. Pick fewer priorities, a longer session, or more days\.$/, (m, l) => `${l.split(', ').map(x => trStr(x.replace(' (evening)', '')) + (x.includes('(evening)') ? ' (buổi tối)' : '')).join(', ')} giữ khối lượng tối thiểu cho mọi nhóm cơ nên hơi dài. Hãy chọn ít nhóm ưu tiên hơn, buổi tập dài hơn hoặc thêm ngày tập.`],
+      [/^(.+) hit the limit of about 8 useful sets per session, so the extra sets were dropped\. More training days would spread them out\.$/, (m, l) => `${trList(l)} đã chạm giới hạn khoảng 8 set hữu ích mỗi buổi nên các set thừa bị bỏ. Thêm ngày tập sẽ giúp dàn đều chúng.`],
+      [/^(.+) ran out of different exercises with your ticked equipment, so a few sets were left out to keep 2 sets per exercise\. Tick more machines or cables to get the full volume\.$/, (m, l) => `${trList(l)} hết bài tập khác nhau với thiết bị bạn đã chọn, nên một vài set bị bỏ để giữ 2 set mỗi bài. Hãy chọn thêm máy hoặc cáp để có đủ khối lượng.`],
+      [/^No exercise is left for: (.+)\. Tick dumbbells\/bench or a matching machine, or switch off a joint filter\.$/, (m, l) => `Không còn bài tập nào cho: ${trList(l)}. Hãy chọn tạ đơn/ghế hoặc một máy phù hợp, hoặc tắt bộ lọc khớp.`],
+      [/^Set 1: take it to (failure|about 1 rep from failure) in the rep range\. Set 2: same weight \(or about 10% lighter\) to the same effort\.$/, (m, f) => `Set 1: tập tới ${f === 'failure' ? 'mức thất bại' : 'cách thất bại khoảng 1 lần'} trong khoảng số lần lặp. Set 2: cùng mức tạ (hoặc nhẹ hơn khoảng 10%) với cùng nỗ lực.`],
+      [/^([\d–]+) RIR, beat last week$/, '$1 RIR, vượt tuần trước'],
+      [/^(kg|lb) · (\d+) weigh-ins$/, '$1 · $2 lần cân'], [/^target ([+−][\d.]+ (?:kg|lb)) \/ week$/, 'mục tiêu $1 / tuần'], [/^([+−][\d.]+ (?:kg|lb)) \/ week$/, '$1 / tuần'],
+      [/^The app needs at least 6 weigh-ins spread over 14 days( since your last adjustment)? to judge your trend \((\d+) so far\)\.$/, (m, s, n) => `Ứng dụng cần ít nhất 6 lần cân trải đều trong 14 ngày${s ? ' kể từ lần điều chỉnh gần nhất' : ''} để đánh giá xu hướng của bạn (hiện có ${n}).`],
+      [/^Your trend is (.+) but your target is (.+)\. Change your calories by ([+−]\d+) kcal a day \(about ([\d,]+) kcal\)\.$/, (m, a, b, c, d) => `Xu hướng của bạn là ${wkVi(a)} nhưng mục tiêu là ${wkVi(b)}. Hãy đổi calo ${c} kcal mỗi ngày (khoảng ${d} kcal).`],
+      [/^Your trend is (.+) against a target of (.+)\. Keep your calories where they are\.$/, (m, a, b) => `Xu hướng của bạn là ${wkVi(a)} so với mục tiêu ${wkVi(b)}. Hãy giữ nguyên calo.`],
+      [/^Current adjustment: ([+−]\d+) kcal a day$/, 'Điều chỉnh hiện tại: $1 kcal mỗi ngày'],
+      [/^Saved (.+)$/, 'Đã lưu $1'], [/^Loaded (.+)$/, 'Đã tải $1'], [/^Deleted (.+)$/, 'Đã xóa $1'], [/^Switched to (Bulk|Maingain) targets$/, 'Đã chuyển sang mục tiêu $1'],
+    ],
+    units: s => s.replace(/\bmin\b/g, 'phút').replace(/\bsets\b/g, 'set').replace(/\bweeks\b/g, 'tuần').replace(/\bweek\b/g, 'tuần').replace(/\bdays\b/g, 'ngày').replace(/\bday\b/g, 'ngày').replace(/\bper\b/g, 'mỗi'),
+  };
+  Object.keys(SESS_VI).forEach(b => ['', ' A', ' B', ' C'].forEach(sx => { VI.exact[b + sx] = SESS_VI[b] + sx; }));
+  Object.entries(DAY_VI).forEach(([k, v]) => { VI.exact[k] = v; });
+
+  const LANGS = { en: null, vi: VI };
+  let LANG = 'en';
+  const EN_TITLE = document.title;
+  function trStr(s) {
+    const L = LANGS[LANG];
+    if (!L) return s;
+    const m = s.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    const core = m[2];
+    if (!core) return s;
+    let out = L.exact[core];
+    if (out === undefined) for (const [re, rep] of L.patterns) { if (re.test(core)) { out = core.replace(re, rep); break; } }
+    if (out === undefined && L.units && core.length <= 48 && /\d/.test(core)) { const u = L.units(core); if (u !== core) out = u; }
+    return out === undefined ? s : m[1] + out + m[3];
+  }
+  const trList = (s, sep = ', ') => s.split(sep).map(x => trStr(x)).join(sep);
+  function applyLang(root) {
+    root = root || document.body;
+    const L = LANGS[LANG];
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = w.nextNode())) {
+      if (/^(SCRIPT|STYLE)$/.test(node.parentNode.nodeName)) continue;
+      if (node.__en === undefined) node.__en = node.nodeValue;
+      const out = L ? trStr(node.__en) : node.__en;
+      if (node.nodeValue !== out) node.nodeValue = out;
+    }
+    root.querySelectorAll('[placeholder],[aria-label],[title]').forEach(el => {
+      for (const at of ['placeholder', 'aria-label', 'title']) {
+        if (!el.hasAttribute(at)) continue;
+        const k = { placeholder: 'enPlaceholder', 'aria-label': 'enAria', title: 'enTitle' }[at];
+        if (el.dataset[k] === undefined) el.dataset[k] = el.getAttribute(at);
+        const out = L ? trStr(el.dataset[k]) : el.dataset[k];
+        if (el.getAttribute(at) !== out) el.setAttribute(at, out);
+      }
+    });
+  }
+  function setLang(l) {
+    LANG = LANGS[l] !== undefined ? l : 'en';
+    document.documentElement.lang = LANG;
+    document.title = LANG === 'en' ? EN_TITLE : trStr(EN_TITLE);
+    applyLang(document.body);
+    if ($('lang')) $('lang').value = LANG;
+  }
+
   // ---------------------------------------------------------------- DOM helpers
   const $ = id => document.getElementById(id);
+  const parseJson = (s, d) => { try { const v = JSON.parse(s); return v && typeof v === 'object' ? v : d; } catch (_) { return d; } };
+  let lastPlan = null;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const r0 = n => Math.round(n);
   const r5 = n => Math.round(n / 5) * 5;
   const fmt = n => r0(n).toLocaleString('en-US');
 
   function toast(msg) {
-    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    const t = $('toast'); t.textContent = LANG === 'en' ? msg : trStr(msg); t.hidden = false;
     clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2200);
   }
 
@@ -269,6 +548,10 @@
   function buildWeakChips() {
     $('weak-list').innerHTML = WEAK_OPTIONS.map(([id, label]) =>
       `<label class="chip"><input type="checkbox" id="weak-${id}" value="${id}"><span>${esc(label)}</span></label>`).join('');
+  }
+  function buildJointChips() {
+    $('joint-list').innerHTML = JOINTS.map(([id, label]) =>
+      `<label class="chip"><input type="checkbox" value="${id}"><span>${esc(label)}</span></label>`).join('');
   }
   function buildDayChips() {
     $('day-list').innerHTML = WEEK.map(d =>
@@ -334,8 +617,12 @@
       weightRaw: num('weight'), heightCmRaw: num('height-cm'), heightFt: num('height-ft'), heightIn: num('height-in'),
       bf: num('bf'), exp: $('exp').value, style: $('style').value, trainDays, days: trainDays.length, session: +$('session').value,
       double: $('double').value, pmSession: +$('pm-session').value,
-      trainMin: +$('session').value + ($('double').value !== 'off' ? +$('pm-session').value : 0),
+      trainMin: (+$('session').value || 75) + ($('double').value !== 'off' ? (+$('pm-session').value || 45) : 0),
       steps, activity: stepFactor(steps),
+      joints: [...document.querySelectorAll('#joint-list input:checked')].map(i => i.value),
+      swaps: parseJson($('swaps').value, {}),
+      cycle: $('cycle').value,
+      adjust: Math.max(-500, Math.min(500, num('adjust') ?? 0)), adjustDate: $('adjust-date').value,
       goal: document.querySelector('input[name="goal"]:checked').value,
       rate: +$('rate').value, goalBf: num('goal-bf'),
       macro: (document.querySelector('input[name="macro"]:checked') || {}).value || 'bal',
@@ -351,6 +638,10 @@
     $('bf').value = s.bf ?? ''; set('exp', s.exp); set('style', s.style || 'std'); set('session', s.session);
     $('steps').value = s.steps ?? OLD_ACTIVITY_STEPS[String(s.activity)] ?? 6500; set('rate', s.rate); set('double', s.double || 'off'); set('pm-session', s.pmSession); $('goal-bf').value = s.goalBf ?? '';
     if (s.goal && $('goal-' + s.goal)) $('goal-' + s.goal).checked = true;
+    document.querySelectorAll('#joint-list input').forEach(i => { i.checked = (s.joints || []).includes(i.value); });
+    $('swaps').value = JSON.stringify(s.swaps || {});
+    $('cycle').value = s.cycle === 'on' ? 'on' : 'off';
+    $('adjust').value = s.adjust ?? 0; $('adjust-date').value = s.adjustDate || '';
     const mc = $('macro-' + (s.macro || 'bal')); if (mc) mc.checked = true;
     document.querySelectorAll('#weak-list input').forEach(i => { i.checked = (s.weak || []).includes(i.value); });
     setTrainDays(Array.isArray(s.trainDays) && s.trainDays.length ? s.trainDays : (DEFAULT_DAYS[s.days] || DEFAULT_DAYS[4]));
@@ -410,6 +701,11 @@
       weeklyKg = kg * ratePct / 100;
       label = 'Slow gain — muscle with very little fat';
     }
+    const adj = Math.max(-500, Math.min(500, p.adjust || 0));
+    if (adj) {
+      target += adj;
+      warnings.push({ bad: false, t: 'Progress adjustment', d: `Your target includes ${adj > 0 ? '+' : '−'}${Math.abs(adj)} kcal a day from your weight log. Reset it on the Progress tab.` });
+    }
     const absFloor = p.sex === 'm' ? 1500 : 1200;
     if (target < absFloor) { target = absFloor; warnings.push({ bad: true, t: 'Very low intake', d: `Calories were set to the minimum of ${absFloor} kcal. Talk to a doctor or dietitian before eating less.` }); }
     target = Math.round(target / 10) * 10;
@@ -456,9 +752,19 @@
         { name: 'Lean bulk', kcal: r10(tdee * (1 + [0.15, 0.10, 0.06][e])), rate: [0.5, 0.35, 0.2][e], protein: r5(1.8 * wAfter), goal: 'bulk' },
       ] };
     }
+    let cycle = null;
+    if (p.cycle === 'on' && style !== 'keto' && p.days >= 1 && p.days <= 6) {
+      const minRest = Math.max(absFloor, protein * 4 + fat * 9);
+      const X = Math.min(Math.max(150, Math.min(450, 0.15 * target)), (target - minRest) * 7 / p.days); // extra kcal on a lifting day vs a rest day
+      if (X >= 50) {
+        const trainK = target + X * (7 - p.days) / 7, restK = target - X * p.days / 7;
+        const carbsOf = k => Math.max(0, r5((k - protein * 4 - fat * 9) / 4));
+        cycle = { days: p.days, train: { kcal: Math.round(trainK / 10) * 10, carbs: carbsOf(trainK) }, rest: { kcal: Math.round(restK / 10) * 10, carbs: carbsOf(restK) } };
+      }
+    }
     const meals = 4;
     return { kg, lbm, bmr, method, factor, tdee, cardioDay, cardioWeek, target, protein, fat, carbs, ratePct, weeklyKg, label, warnings, ea,
-      styleName: MACRO_STYLES[style].n, after, fibre: r0(target * 14 / 1000), perMeal: r5(Math.min(protein / meals, Math.max(0.4 * kg, 25))), meals, cutPlan,
+      styleName: MACRO_STYLES[style].n, after, cycle, fibre: r0(target * 14 / 1000), perMeal: r5(Math.min(protein / meals, Math.max(0.4 * kg, 25))), meals, cutPlan,
       waterRest: 0.035 * kg, waterTrain: 0.035 * kg + 0.75 * p.trainMin / 60 };
   }
 
@@ -482,11 +788,15 @@
     const { sets, weak } = weeklySets(p);
     const split = SPLITS[p.days];
     const mode = p.double || 'off'; // off | split | small
+    // a session length of 0 means "no limit": nothing is trimmed for time
+    const amLim = p.session > 0 ? p.session : Infinity, pmLim = p.pmSession > 0 ? p.pmSession : Infinity;
     const sb = p.style === 'sb'; // science-based: 2 all-out sets per exercise
     const setMin = sb ? 2.8 : 2.4; // minutes per set incl. rest
     const upperEmph = p.weak.includes('upperChest');
     const have = new Set(p.equip);
-    const usable = id => EX[id].eq.every(q => have.has(q));
+    const joints = new Set(p.joints || []);
+    const swaps = p.swaps || {};
+    const usable = id => EX[id].eq.every(q => have.has(q)) && !(EX[id].j || []).some(t => joints.has(t));
     const sessions = split.days.map(([name], i) => ({ name, day: p.trainDays[i], muscles: {} }));
     // useful hard sets per muscle per session; splitting a day in two allows a little more per day
     const cap = m => (weak.has(m) ? 8 : 6) + (mode === 'split' ? 3 : 0);
@@ -514,10 +824,10 @@
     const partOf = m => (mode === 'small' && SMALL.has(m)) ? 'pm' : 'am';
     const units = [];
     for (const sess of sessions) {
-      if (mode === 'split') units.push({ sess, part: 'all', limit: p.session + p.pmSession, warm: 16 });
+      if (mode === 'split') units.push({ sess, part: 'all', limit: amLim + pmLim, warm: 16 });
       else {
-        units.push({ sess, part: 'am', limit: p.session, warm: 8 });
-        if (mode === 'small') units.push({ sess, part: 'pm', limit: p.pmSession, warm: 5 });
+        units.push({ sess, part: 'am', limit: amLim, warm: 8 });
+        if (mode === 'small') units.push({ sess, part: 'pm', limit: pmLim, warm: 5 });
       }
     }
     const inUnit = (u, m) => u.part === 'all' || partOf(m) === u.part;
@@ -547,7 +857,7 @@
     const occ = {};
     const missing = new Set();
     const fewEx = new Set();
-    for (const sess of sessions) {
+    for (const [si, sess] of sessions.entries()) {
       const used = new Set();
       const items = [];
       for (const [m, s] of Object.entries(sess.muscles)) {
@@ -577,20 +887,32 @@
             if (last) last.sets += ps;
             return;
           }
-          const pick = free[o % Math.min(2, free.length)];
+          const key = `${si}|${m}|${j}`;
+          let pick = free[o % Math.min(2, free.length)];
+          if (swaps[key] && free.includes(swaps[key])) pick = swaps[key]; // the lifter swapped this exercise
           used.add(pick);
-          items.push({ m, id: pick, sets: ps, weak: weak.has(m), j });
+          items.push({ m, id: pick, sets: ps, weak: weak.has(m), j, key });
         });
       }
       items.sort((a, b) =>
         (b.weak - a.weak) || ((a.weak && b.weak) ? 0 : (EX[a.id].k === 'c' ? 0 : 1) - (EX[b.id].k === 'c' ? 0 : 1)) || (ORDER[a.m] - ORDER[b.m]) || (a.j - b.j));
+
+      // other exercises this slot could be swapped for, starting with the next one in the ranking
+      for (const it of items) {
+        const L = LISTS[it.m];
+        const full = [...new Set([...L.p, ...L.s])].filter(usable);
+        const others = new Set(items.filter(x => x !== it).map(x => x.id));
+        const cand = full.filter(id => id !== it.id && !others.has(id));
+        const at = full.indexOf(it.id);
+        it.alts = [...cand.filter(id => full.indexOf(id) > at), ...cand.filter(id => full.indexOf(id) < at)];
+      }
 
       // 4) morning / evening
       sess.am = []; sess.pm = [];
       if (mode === 'small') items.forEach(it => sess[partOf(it.m)].push(it));
       else if (mode === 'split') {
         const total = items.reduce((a, b) => a + b.sets, 0);
-        const target = total * p.session / (p.session + p.pmSession);
+        const target = total * (isFinite(amLim) && isFinite(pmLim) ? amLim / (amLim + pmLim) : 0.5);
         let amSets = 0, toPm = false;
         for (const it of items) {
           if (!toPm && (amSets === 0 || amSets + it.sets <= target + 1)) { sess.am.push(it); amSets += it.sets; }
@@ -609,10 +931,10 @@
     for (const sess of sessions) for (const it of sess.items) finalSets[it.m] = (finalSets[it.m] || 0) + it.sets;
     const overTime = [];
     for (const sess of sessions) {
-      if (mode === 'split') { if (sess.minutes > p.session + p.pmSession + 2) overTime.push(sess.name); }
+      if (mode === 'split') { if (sess.minutes > amLim + pmLim + 2) overTime.push(sess.name); }
       else {
-        if (sess.amMin > p.session + 2) overTime.push(sess.name);
-        if (sess.pmMin > p.pmSession + 2) overTime.push(sess.name + ' (evening)');
+        if (sess.amMin > amLim + 2) overTime.push(sess.name);
+        if (sess.pmMin > pmLim + 2) overTime.push(sess.name + ' (evening)');
       }
     }
     return { split, mode, sessions, finalSets, weak, trimmed, overTime, fewEx: [...fewEx], lost: [...new Set(lost)], missing: [...missing] };
@@ -634,6 +956,17 @@
         Goal weight at ${p.goalBf}% body fat ≈ <b style="display:inline">${wUnit(p, n.cutPlan.goalW)}</b> (lose ≈ ${wUnit(p, n.cutPlan.toLose)}).
         At this rate that takes about <b style="display:inline">${n.cutPlan.weeks} weeks</b>${n.cutPlan.breaks ? `, plus ${n.cutPlan.breaks} one-week diet break${n.cutPlan.breaks > 1 ? 's' : ''} at maintenance = <b style="display:inline">${n.cutPlan.total} weeks</b> total` : ''}.
       </div>` : '';
+    const cycleBlock = n.cycle ? `
+      <div>
+        <h3>Lifting days vs rest days</h3>
+        <p class="hint" style="margin:2px 0 10px">Protein and fat stay the same every day; carbs move with training. Your weekly average is still ${fmt(n.target)} kcal a day. Cardio-only days count as rest days.</p>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Day type</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fat</th></tr></thead>
+          <tbody>
+            <tr><td>Lifting day (${n.cycle.days} per week)</td><td class="num">${fmt(n.cycle.train.kcal)} kcal</td><td class="num">${n.protein} g</td><td class="num">${n.cycle.train.carbs} g</td><td class="num">${n.fat} g</td></tr>
+            <tr><td>Rest day (${7 - n.cycle.days} per week)</td><td class="num">${fmt(n.cycle.rest.kcal)} kcal</td><td class="num">${n.protein} g</td><td class="num">${n.cycle.rest.carbs} g</td><td class="num">${n.fat} g</td></tr>
+          </tbody></table></div>
+      </div>` : (p.cycle === 'on' ? '<div class="callout"><b>Calorie cycling is off for this plan</b>Keto, or too little room above the minimum safe intake, means every day uses the same calories.</div>' : '');
     const afterBlock = n.after ? `
       <div>
         <h3>After the cut</h3>
@@ -662,7 +995,7 @@
         </div>
         <div class="legend" style="margin-top:6px"><span><i style="background:var(--red)"></i>Protein ${r0(pk / tot * 100)}%</span><span><i style="background:var(--accent)"></i>Carbs ${r0(ck / tot * 100)}%</span><span><i style="background:var(--yellow)"></i>Fat ${r0(fk / tot * 100)}%</span></div>
       </div>
-      ${warn}${cut}
+      ${warn}${cut}${cycleBlock}
       <div class="cols">
         <div class="tbl-wrap"><table>
           <thead><tr><th>Daily target</th><th>Amount</th></tr></thead>
@@ -715,13 +1048,19 @@
     const maxSets = Math.max(...Object.values(plan.finalSets), 1);
     const weakNames = p.weak.map(w => w === 'upperChest' ? 'Upper chest' : MUSCLE_LABEL[w]);
     const notes = [];
+    if (p.session === 0 || (p.double !== 'off' && p.pmSession === 0)) {
+      const mins = plan.sessions.map(s => s.minutes);
+      const longest = Math.max(...mins), avg = Math.round(mins.reduce((x, y) => x + y, 0) / mins.length);
+      notes.push({ soft: true, t: 'No time limit', d: `Nothing is trimmed for time. Sessions average about ${avg} min, the longest about ${longest} min.${longest > 120 ? ' Sessions over about 2 hours usually mean the late sets are done tired; consider another training day, fewer priorities, or splitting the day into two sessions.' : ''}` });
+    }
     if (p.weak.length > 4) notes.push({ soft: true, t: 'Lots of priorities', d: 'Priority muscles are never trimmed and each gets extra sets, so sessions get long and recovery gets harder. If it feels like too much, keep 3 to 4 priorities or add a training day.' });
     if (p.goal === 'cut') notes.push({ soft: true, t: 'Cut volume', d: 'While you cut, muscles that are not priorities get about 15% fewer weekly sets. Priority muscles keep full volume. Switch the goal to Maingain or Bulk to get full volume back.' });
     if (plan.trimmed) notes.push({ soft: true, t: 'Some sets were trimmed to fit your session length', d: 'Non-priority muscles lost a few sets. Choose a longer session or more days to train everything at full volume.' });
     if (plan.overTime.length) notes.push({ soft: true, t: 'Some sessions run over your time limit', d: `${plan.overTime.join(', ')} keep minimum volume for every muscle, so they run a bit long. Pick fewer priorities, a longer session, or more days.` });
     if (plan.lost.length) notes.push({ t: 'Per-session cap reached', d: `${plan.lost.map(m => MUSCLE_LABEL[m]).join(', ')} hit the limit of about 8 useful sets per session, so the extra sets were dropped. More training days would spread them out.` });
     if (plan.fewEx.length) notes.push({ soft: true, t: 'Not enough different exercises', d: `${plan.fewEx.map(m => MUSCLE_LABEL[m]).join(', ')} ran out of different exercises with your ticked equipment, so a few sets were left out to keep 2 sets per exercise. Tick more machines or cables to get the full volume.` });
-    if (plan.missing.length) notes.push({ t: 'Missing equipment', d: `No ticked equipment can train: ${plan.missing.map(m => MUSCLE_LABEL[m]).join(', ')}. Tick dumbbells/bench or a matching machine.` });
+    if (plan.missing.length) notes.push({ t: 'Missing equipment', d: `No exercise is left for: ${plan.missing.map(m => MUSCLE_LABEL[m]).join(', ')}. Tick dumbbells/bench or a matching machine, or switch off a joint filter.` });
+    if (p.joints && p.joints.length) notes.push({ soft: true, t: `Joint-friendly mode: ${p.joints.map(j => JOINT_NAME[j]).join(', ')}`, d: 'Exercises that commonly aggravate these joints were skipped. This is a convenience filter, not medical advice: use a pain-free range, stop anything that hurts, and see a physio or doctor if pain persists.' });
 
     const vol = MUSCLES.filter(([m]) => plan.finalSets[m]).map(([m, label]) => {
       const w = plan.weak.has(m);
@@ -730,7 +1069,7 @@
 
     const rows = list => list.map(it => {
       const x = EX[it.id];
-      return `<tr><td class="ex"><b><span class="tag m">${esc(MUSCLE_LABEL[it.m])}</span>${esc(x.n)}${it.weak ? '<span class="tag weak">Priority</span>' : ''}</b><span class="note">${esc(x.t)}</span></td>
+      return `<tr><td class="ex"><b><span class="tag m">${esc(MUSCLE_LABEL[it.m])}</span>${esc(x.n)}${it.weak ? '<span class="tag weak">Priority</span>' : ''}${it.alts && it.alts.length ? `<button type="button" class="swap" data-swap="${esc(it.key)}" title="Swap exercise">Swap</button>` : ''}</b><span class="note">${esc(x.t)}</span></td>
         <td class="num">${it.sets}</td><td class="num">${x.r}</td><td class="num">${rir[x.k]}</td><td class="num">${rest[x.k]}</td></tr>`;
     }).join('');
     const subhead = (label, sets, min) => `<tr class="subhead"><td colspan="5"><span>${label}</span><span class="meta">${sets} sets · ~${min} min</span></td></tr>`;
@@ -787,6 +1126,7 @@
       ${sb ? `<div class="callout"><b>Science-based style: 2 hard sets per exercise</b>Fewer sets per exercise but every set close to failure, with longer rests and more exercise variety per muscle. Weekly sets per muscle stay in the 10–20 range that research links to the most growth.</div>` : ''}
       ${doubleTip}
       ${notes.map(x => `<div class="callout${x.soft ? '' : ' bad'}"><b>${esc(x.t)}</b>${esc(x.d)}</div>`).join('')}
+      ${Object.keys(p.swaps || {}).length ? '<div class="callout"><b>Swapped exercises</b>You changed some exercises. Swaps only apply while the same slot exists in the plan. <button type="button" class="btn small ghost" data-reset-swaps>Reset swaps</button></div>' : ''}
       <div><h3>Hard sets per muscle per week</h3><p class="hint" style="margin:2px 0 10px">Direct sets only. Compound lifts add extra indirect work (pressing for triceps and front delts, rows for biceps, squats for glutes).</p>
         <div class="vol">${vol}</div></div>
       <div><h3>Your week</h3>${weekStrip}</div>
@@ -818,6 +1158,108 @@
       </div>`;
   }
 
+  // ---------------------------------------------------------------- Progress tracker
+  const WLOG_KEY = 'pp_weights';
+  const logKey = () => $('profile-select').value || '_';
+  function loadLog() {
+    try { const all = JSON.parse(localStorage.getItem(WLOG_KEY) || '{}'); return Array.isArray(all[logKey()]) ? all[logKey()] : []; } catch (_) { return []; }
+  }
+  function saveLog(list) {
+    try { const all = JSON.parse(localStorage.getItem(WLOG_KEY) || '{}'); all[logKey()] = list; localStorage.setItem(WLOG_KEY, JSON.stringify(all)); return true; } catch (_) { return false; }
+  }
+  const pad2 = x => String(x).padStart(2, '0');
+  function todayStr() { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+  const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / 86400000); };
+  const sum = arr => arr.reduce((x, y) => x + y, 0);
+
+  // Least-squares weight trend over the last 4 weeks (only entries after the last applied adjustment).
+  function analyseLog(log, p, n) {
+    const all = [...log].sort((x, y) => (x.d < y.d ? -1 : 1));
+    const out = { all, ready: false, win: 0, expected: p.goal === 'cut' ? -n.weeklyKg : n.weeklyKg };
+    if (!all.length) return out;
+    const last = dayNum(all[all.length - 1].d);
+    const win = all.filter(e => dayNum(e.d) > last - 28 && (!p.adjustDate || e.d > p.adjustDate));
+    out.win = win.length;
+    if (win.length < 6 || dayNum(win[win.length - 1].d) - dayNum(win[0].d) < 14) return out;
+    const x0 = dayNum(win[0].d);
+    const xs = win.map(e => dayNum(e.d) - x0), ys = win.map(e => e.w);
+    const mx = sum(xs) / xs.length, my = sum(ys) / ys.length;
+    let sxx = 0, sxy = 0;
+    xs.forEach((x, i) => { sxx += (x - mx) ** 2; sxy += (x - mx) * (ys[i] - my); });
+    out.rate = sxx ? sxy / sxx * 7 : 0; // kg per week
+    out.ready = true;
+    out.diff = out.rate - out.expected;
+    const tol = Math.max(0.1, Math.abs(out.expected) * 0.25);
+    if (Math.abs(out.diff) > tol) {
+      const corr = Math.round(Math.max(-300, Math.min(300, -out.diff * 1100)) / 25) * 25; // 7700 kcal per kg, per day
+      const next = Math.max(-500, Math.min(500, (p.adjust || 0) + corr));
+      out.corr = next - (p.adjust || 0);
+      if (Math.abs(out.corr) >= 50) out.suggest = next;
+    }
+    return out;
+  }
+
+  function chartSvg(all, p) {
+    const pts = all.slice(-60);
+    if (pts.length < 2) return '';
+    const W = 640, H = 190, L = 46, R = 12, T = 12, B = 24;
+    const disp = kg => p.units === 'imperial' ? kg / 0.45359237 : kg;
+    const x0 = dayNum(pts[0].d), span = Math.max(1, dayNum(pts[pts.length - 1].d) - x0);
+    const vals = pts.map(e => disp(e.w));
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pv = Math.max(0.5, (hi - lo) * 0.15); lo -= pv; hi += pv;
+    const X = d => L + (dayNum(d) - x0) / span * (W - L - R);
+    const Y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    const avg = pts.map(e => { const near = pts.filter(q => dayNum(q.d) <= dayNum(e.d) && dayNum(q.d) > dayNum(e.d) - 7); return disp(sum(near.map(q => q.w)) / near.length); });
+    const line = pts.map((e, i) => `${X(e.d).toFixed(1)},${Y(avg[i]).toFixed(1)}`).join(' ');
+    const dots = pts.map((e, i) => `<circle cx="${X(e.d).toFixed(1)}" cy="${Y(vals[i]).toFixed(1)}" r="3" fill="var(--accent)" fill-opacity=".45"/>`).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight over time" style="width:100%;height:auto;display:block">
+      <line x1="${L}" y1="${T}" x2="${L}" y2="${H - B}" stroke="var(--line)"/><line x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}" stroke="var(--line)"/>
+      <text x="${L - 6}" y="${T + 9}" text-anchor="end">${hi.toFixed(1)}</text><text x="${L - 6}" y="${H - B}" text-anchor="end">${lo.toFixed(1)}</text>
+      <text x="${L}" y="${H - 6}">${pts[0].d}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">${pts[pts.length - 1].d}</text>
+      ${dots}<polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+  }
+
+  function renderProgress(p, n) {
+    const log = loadLog();
+    const an = analyseLog(log, p, n);
+    const all = an.all;
+    const unit = p.units === 'imperial' ? 'lb' : 'kg';
+    const sr = kg => `${kg >= 0 ? '+' : '−'}${wUnit(p, Math.abs(kg), 2)} / week`;
+    let kpis = '';
+    if (all.length) {
+      const lastD = dayNum(all[all.length - 1].d);
+      const recent = all.filter(e => dayNum(e.d) > lastD - 7);
+      const avg7 = sum(recent.map(e => e.w)) / recent.length;
+      const ch = all[all.length - 1].w - all[0].w;
+      kpis = `<div class="kpis">
+        <div class="kpi" style="--c:var(--ink)"><div class="k">Latest</div><div class="v">${wUnit(p, all[all.length - 1].w).replace(/ (kg|lb)$/, '')}</div><div class="u">${unit} · ${all[all.length - 1].d}</div></div>
+        <div class="kpi" style="--c:var(--accent)"><div class="k">7-day average</div><div class="v">${wUnit(p, avg7).replace(/ (kg|lb)$/, '')}</div><div class="u">${unit}</div></div>
+        <div class="kpi" style="--c:var(--yellow)"><div class="k">Change since first</div><div class="v">${ch >= 0 ? '+' : '−'}${wUnit(p, Math.abs(ch)).replace(/ (kg|lb)$/, '')}</div><div class="u">${unit} · ${all.length} weigh-ins</div></div>
+        <div class="kpi" style="--c:var(--green)"><div class="k">Trend (4 weeks)</div><div class="v" style="font-size:1.1rem">${an.ready ? sr(an.rate) : '—'}</div><div class="u">target ${sr(an.expected)}</div></div>
+      </div>`;
+    }
+    let verdict;
+    if (!all.length) verdict = '<div class="callout"><b>Add your first weigh-in</b>Weigh yourself every morning after the toilet, before eating. After two weeks the app can check your progress against your target and suggest a calorie change.</div>';
+    else if (!an.ready) verdict = `<div class="callout"><b>Keep logging</b>The app needs at least 6 weigh-ins spread over 14 days${p.adjustDate ? ' since your last adjustment' : ''} to judge your trend (${an.win} so far).</div>`;
+    else if (an.suggest !== undefined) verdict = `<div class="callout"><b>${an.corr > 0 ? 'Eat a little more' : 'Eat a little less'}</b>Your trend is ${sr(an.rate)} but your target is ${sr(an.expected)}. Change your calories by ${an.corr > 0 ? '+' : '−'}${Math.abs(an.corr)} kcal a day (about ${fmt(n.target + an.corr)} kcal). <button type="button" class="btn small" data-apply-adj="${an.suggest}">Apply this change</button></div>`;
+    else verdict = `<div class="callout"><b>On track</b>Your trend is ${sr(an.rate)} against a target of ${sr(an.expected)}. Keep your calories where they are.</div>`;
+    const adjNote = p.adjust ? `<div class="callout"><b>Current adjustment: ${p.adjust > 0 ? '+' : '−'}${Math.abs(p.adjust)} kcal a day</b>It is already included in your targets. <button type="button" class="btn small ghost" data-reset-adj>Reset to plan</button></div>` : '';
+    const rows = [...all].reverse().slice(0, 14).map(e => `<tr><td class="num">${e.d}</td><td class="num">${wUnit(p, e.w)}</td><td><button type="button" class="btn small ghost" data-del="${e.d}">Delete</button></td></tr>`).join('');
+    return `
+      <div class="split-head"><h2>Progress tracker</h2><p>Weigh in each morning; the app compares your trend with your target.</p></div>
+      <div class="pg-add">
+        <div class="field"><label for="pg-date">Date</label><input id="pg-date" type="date" value="${todayStr()}"></div>
+        <div class="field"><label for="pg-weight">Weight (${unit})</label><input id="pg-weight" type="number" step="0.1" min="30" max="900" inputmode="decimal"></div>
+        <button type="button" class="btn" id="pg-add">Add weigh-in</button>
+      </div>
+      ${kpis}
+      ${chartSvg(all, p)}
+      ${verdict}${adjNote}
+      ${rows ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Weight</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
+      <p class="hint">Entries are saved in this browser under the selected lifter. Single days jump around by 1 to 2 kg from water and food, so the trend matters more than any one weigh-in.</p>`;
+  }
+
   // ---------------------------------------------------------------- Main update
   function syncUi(p) {
     document.querySelectorAll('.metric-only').forEach(el => { el.hidden = p.units !== 'metric'; });
@@ -845,10 +1287,19 @@
   function update() {
     const p = readState();
     syncUi(p);
-    $('panel-nutrition').innerHTML = renderNutrition(p, nutrition(p));
-    $('panel-training').innerHTML = renderTraining(p, p.days >= 2 && p.days <= 6 ? buildPlan(p) : null);
+    const plan = p.days >= 2 && p.days <= 6 ? buildPlan(p) : null;
+    if (plan && (p.session === 0 || (p.double !== 'off' && p.pmSession === 0))) {
+      const mins = plan.sessions.map(s => s.minutes).filter(Boolean); // no time limit: use the planned session length for calories
+      if (mins.length) p.trainMin = Math.round(mins.reduce((x, y) => x + y, 0) / mins.length);
+    }
+    const nut = nutrition(p);
+    $('panel-nutrition').innerHTML = renderNutrition(p, nut);
+    $('panel-progress').innerHTML = renderProgress(p, nut);
+    lastPlan = plan;
+    $('panel-training').innerHTML = renderTraining(p, plan);
     p.cardio.forEach((c, i) => { const el = $('c-est-' + i); if (el) el.textContent = `≈ ${fmt(cardioInfo(c, p.weightKg).kcal)} kcal`; });
     try { localStorage.setItem('pp_last', JSON.stringify(p)); } catch (_) { /* storage blocked */ }
+    if (LANG !== 'en') applyLang(document.body);
   }
 
   // ---------------------------------------------------------------- Profiles & sharing
@@ -864,17 +1315,22 @@
     try { return JSON.parse(decodeURIComponent(escape(atob(str.replace(/-/g, '+').replace(/_/g, '/'))))); } catch (_) { return null; }
   }
 
+  function applyTheme(t) {
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme');
+    const b = $('btn-theme');
+    if (b) { b.textContent = { auto: 'Theme: Auto', light: 'Theme: Light', dark: 'Theme: Dark' }[t] || 'Theme: Auto'; if (LANG !== 'en') applyLang(b); }
+  }
   function selectTab(which) {
-    const nut = which === 'nutrition';
-    $('tab-nutrition').setAttribute('aria-selected', String(nut));
-    $('tab-training').setAttribute('aria-selected', String(!nut));
-    $('panel-nutrition').hidden = !nut;
-    $('panel-training').hidden = nut;
+    ['nutrition', 'training', 'progress'].forEach(t => {
+      $('tab-' + t).setAttribute('aria-selected', String(t === which));
+      $('panel-' + t).hidden = t !== which;
+    });
   }
 
   // ---------------------------------------------------------------- Init
   function init() {
     buildWeakChips();
+    buildJointChips();
     buildDayChips();
     buildEquipment();
     renderCardioRows([], $('units').value);
@@ -937,15 +1393,66 @@
       if (g) { g.checked = true; update(); toast(`Switched to ${b.dataset.setGoal === 'bulk' ? 'Bulk' : 'Maingain'} targets`); }
     });
     $('steps-preset').addEventListener('change', () => { if ($('steps-preset').value) $('steps').value = $('steps-preset').value; });
+    $('panel-training').addEventListener('click', ev => {
+      const sw = ev.target.closest('[data-swap]');
+      if (sw && lastPlan) {
+        const it = lastPlan.sessions.flatMap(s => s.items).find(x => x.key === sw.dataset.swap);
+        if (it && it.alts.length) {
+          const swaps = parseJson($('swaps').value, {}); swaps[it.key] = it.alts[0];
+          $('swaps').value = JSON.stringify(swaps); update();
+        }
+        return;
+      }
+      if (ev.target.closest('[data-reset-swaps]')) { $('swaps').value = '{}'; update(); toast('Swaps reset'); }
+    });
+    function addWeighIn() {
+      const date = $('pg-date').value, raw = parseFloat($('pg-weight').value);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(raw)) { toast('Enter a date and a weight.'); return; }
+      const kg = $('units').value === 'imperial' ? raw * 0.45359237 : raw;
+      if (kg < 30 || kg > 400) { toast('That weight does not look right.'); return; }
+      const log = loadLog().filter(e => e.d !== date);
+      log.push({ d: date, w: +kg.toFixed(2) });
+      log.sort((x, y) => (x.d < y.d ? -1 : 1));
+      if (!saveLog(log.slice(-400))) { toast('Saving is blocked in this browser.'); return; }
+      update(); toast('Weigh-in added');
+    }
+    $('panel-progress').addEventListener('click', ev => {
+      const t = ev.target;
+      if (t.closest('#pg-add')) { addWeighIn(); return; }
+      const del = t.closest('[data-del]');
+      if (del) { saveLog(loadLog().filter(e => e.d !== del.dataset.del)); update(); return; }
+      const ap = t.closest('[data-apply-adj]');
+      if (ap) { $('adjust').value = ap.dataset.applyAdj; $('adjust-date').value = todayStr(); update(); toast('Calories adjusted'); return; }
+      if (t.closest('[data-reset-adj]')) { $('adjust').value = '0'; $('adjust-date').value = ''; update(); toast('Adjustment reset'); }
+    });
+    $('panel-progress').addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target.id === 'pg-weight') { ev.preventDefault(); addWeighIn(); } });
+    // a new goal or cut speed starts a fresh calorie adjustment
+    document.querySelectorAll('input[name="goal"], #rate').forEach(el => el.addEventListener('change', () => { $('adjust').value = '0'; $('adjust-date').value = ''; }));
+
+    let theme = 'auto';
+    try { theme = localStorage.getItem('pp_theme') || 'auto'; } catch (_) { /* storage blocked */ }
+    applyTheme(theme);
+    $('btn-theme').addEventListener('click', () => {
+      const order = ['auto', 'light', 'dark'];
+      theme = order[(order.indexOf(theme) + 1) % 3];
+      applyTheme(theme);
+      try { localStorage.setItem('pp_theme', theme); } catch (_) { /* storage blocked */ }
+    });
     $('tab-nutrition').addEventListener('click', () => selectTab('nutrition'));
     $('tab-training').addEventListener('click', () => selectTab('training'));
+    $('tab-progress').addEventListener('click', () => selectTab('progress'));
 
     $('btn-save').addEventListener('click', () => {
       const p = readState();
       if (!p.name) { toast('Type a name first, then save.'); $('name').focus(); return; }
       const all = loadProfiles(); all[p.name] = p;
       toast(saveProfiles(all) ? `Saved ${p.name}` : 'Saving is blocked in this browser.');
+      try { // an unsaved weight log moves to the new lifter
+        const logs = JSON.parse(localStorage.getItem(WLOG_KEY) || '{}');
+        if (logs._ && !logs[p.name]) { logs[p.name] = logs._; delete logs._; localStorage.setItem(WLOG_KEY, JSON.stringify(logs)); }
+      } catch (_) { /* storage blocked */ }
       refreshProfiles(p.name);
+      update();
     });
     $('btn-delete').addEventListener('click', () => {
       const nm = $('profile-select').value;
@@ -965,7 +1472,11 @@
     });
     $('btn-print').addEventListener('click', () => window.print());
 
+    $('lang').addEventListener('change', () => { try { localStorage.setItem('pp_lang', $('lang').value); } catch (_) { /* storage blocked */ } setLang($('lang').value); });
+    let lang = 'en';
+    try { lang = localStorage.getItem('pp_lang') || ((navigator.language || '').toLowerCase().startsWith('vi') ? 'vi' : 'en'); } catch (_) { /* storage blocked */ }
     update();
+    setLang(lang);
   }
 
   document.addEventListener('DOMContentLoaded', init);
